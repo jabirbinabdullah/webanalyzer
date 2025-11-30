@@ -4,7 +4,6 @@ import puppeteer from 'puppeteer';
 import { load } from 'cheerio';
 import axios from 'axios';
 import { AxePuppeteer } from 'axe-puppeteer';
-import lighthouse from 'lighthouse';
 import { detectTechnologies } from './src/scanners/techScanner.js';
 import analyzeSEO from './src/scanners/seoScanner.js';
 import rateLimit from 'express-rate-limit';
@@ -93,6 +92,12 @@ const apiLimiter = rateLimit({
 app.use('/api', apiLimiter);
 
 const PORT = process.env.PORT || 5000;
+
+import authRouter from './src/routes/auth.js';
+import portfolioRouter from './src/routes/portfolio.js';
+
+app.use('/api/auth', authRouter);
+app.use('/api/portfolio', portfolioRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
@@ -185,20 +190,28 @@ app.get('/api/analyze', async (req, res) => {
 
     let lighthouseResult = null;
     try {
-      const { lhr } = await lighthouse(url, {
-        port: (new URL(browser.wsEndpoint())).port, // Connect Lighthouse to the same Puppeteer instance
-        output: 'json',
-        // Only gather the categories we care about to keep report concise
-        onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo', 'pwa'],
-      }, undefined, page); // Pass page to Lighthouse for existing session
+      // Load Lighthouse dynamically to avoid Jest attempting to parse ESM-only modules at test load time.
+      const lighthouseModule = await import('lighthouse');
+      const lighthouseFn = lighthouseModule && (lighthouseModule.default || lighthouseModule);
 
-      lighthouseResult = {
-        performance: lhr.categories.performance.score * 100,
-        accessibility: lhr.categories.accessibility.score * 100,
-        bestPractices: lhr.categories['best-practices'].score * 100,
-        seo: lhr.categories.seo.score * 100,
-        pwa: lhr.categories.pwa.score * 100,
-      };
+      if (typeof lighthouseFn === 'function') {
+        const { lhr } = await lighthouseFn(url, {
+          port: (new URL(browser.wsEndpoint())).port, // Connect Lighthouse to the same Puppeteer instance
+          output: 'json',
+          // Only gather the categories we care about to keep report concise
+          onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo', 'pwa'],
+        }, undefined, page); // Pass page to Lighthouse for existing session
+
+        lighthouseResult = {
+          performance: lhr.categories.performance.score * 100,
+          accessibility: lhr.categories.accessibility.score * 100,
+          bestPractices: lhr.categories['best-practices'].score * 100,
+          seo: lhr.categories.seo.score * 100,
+          pwa: lhr.categories.pwa.score * 100,
+        };
+      } else {
+        lighthouseResult = { error: 'Lighthouse module could not be loaded as a function.' };
+      }
     } catch (err) {
       console.error('Lighthouse audit failed:', err.message);
       lighthouseResult = { error: err.message };
@@ -238,7 +251,10 @@ app.get('/api/analyze', async (req, res) => {
  * GET /api/analyses?url=
  * Returns all historical analyses for a given URL.
  */
-app.get('/api/analyses', async (req, res) => {
+import { protect } from './src/middleware/auth.js';
+import { getReportHTML } from './src/report-template.js';
+
+app.get('/api/analyses', protect, async (req, res) => {
   const { url } = req.query;
   if (!url) {
     return res.status(400).json({ error: 'Missing url query parameter' });
@@ -252,6 +268,58 @@ app.get('/api/analyses', async (req, res) => {
     res.status(500).json({ error: 'Failed to retrieve analyses' });
   }
 });
+
+/**
+ * POST /api/report
+ * Generates a PDF report for a given analysis ID.
+ */
+app.post('/api/report', async (req, res) => {
+  const { analysisId } = req.body;
+  if (!analysisId) {
+    return res.status(400).json({ error: 'Missing analysisId in request body' });
+  }
+
+  let browser = null;
+  try {
+    const analysis = await Analysis.findById(analysisId);
+    if (!analysis) {
+      return res.status(404).json({ error: 'Analysis not found' });
+    }
+
+    const reportHtml = getReportHTML(analysis);
+
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    const page = await browser.newPage();
+    await page.setContent(reportHtml, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '40px',
+        right: '40px',
+        bottom: '40px',
+        left: '40px',
+      },
+    });
+
+    const filename = `WebAnalyzer-Report-${analysis.url.replace(/https?:\/\//, '').replace(/[\/\?#]/g, '_')}-${new Date(analysis.createdAt).toISOString().split('T')[0]}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error('Error generating PDF report:', err.message);
+    res.status(500).json({ error: 'Failed to generate PDF report' });
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+});
+
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => console.log(`Backend listening on http://localhost:${PORT}`));
