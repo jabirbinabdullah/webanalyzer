@@ -1,6 +1,27 @@
 import mongoose from 'mongoose';
 
-const AnalysisSchema = new mongoose.Schema({
+let ExportedAnalysis = null;
+
+// If SKIP_DB is set, use a lightweight in-memory stub model
+if (process.env.SKIP_DB === 'true') {
+  class StubAnalysis {
+    constructor(data) {
+      Object.assign(this, data || {});
+    }
+    async save() {
+      // mimic mongoose return
+      return this;
+    }
+    static async find() {
+      return [];
+    }
+    static async findById() {
+      return null;
+    }
+  }
+  ExportedAnalysis = StubAnalysis;
+} else {
+  const AnalysisSchema = new mongoose.Schema({
   url: {
     type: String,
     required: true,
@@ -56,12 +77,19 @@ const AnalysisSchema = new mongoose.Schema({
     pwa: Number,
     error: String,
   },
+  status: {
+    type: String,
+    enum: ['pending', 'in-progress', 'completed', 'failed'],
+    default: 'pending',
+  },
   createdAt: {
     type: Date,
     default: Date.now,
   },
-});
+  });
 
-const Analysis = mongoose.model('Analysis', AnalysisSchema);
+  const Analysis = mongoose.model('Analysis', AnalysisSchema);
+  ExportedAnalysis = Analysis;
+}
 
-export default Analysis;
+export default ExportedAnalysis;

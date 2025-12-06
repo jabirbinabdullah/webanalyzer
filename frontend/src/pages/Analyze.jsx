@@ -1,7 +1,8 @@
 import React, { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { analyzeUrl, exportPdf, addPortfolioItem } from '../services/api';
+import { analyzeUrl, getAnalysis, getAnalysisStatus, exportPdf, addPortfolioItem } from '../services/api';
 import AuthContext from '../context/AuthContext';
+import { useEffect } from 'react';
 
 export default function Analyze() {
   const [url, setUrl] = useState('https://example.com');
@@ -11,7 +12,36 @@ export default function Analyze() {
   const [showScreenshot, setShowScreenshot] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [analysisId, setAnalysisId] = useState(null);
+  const [status, setStatus] = useState(null);
   const { user } = useContext(AuthContext) || {};
+
+  useEffect(() => {
+    let interval;
+    if (analysisId && (status === 'pending' || status === 'in-progress')) {
+      interval = setInterval(async () => {
+        try {
+          const { status: newStatus } = await getAnalysisStatus(analysisId);
+          setStatus(newStatus);
+          if (newStatus === 'completed') {
+            const finalResult = await getAnalysis(analysisId);
+            setResult(finalResult);
+            setLoading(false);
+            setAnalysisId(null);
+          } else if (newStatus === 'failed') {
+            setError('Analysis failed.');
+            setLoading(false);
+            setAnalysisId(null);
+          }
+        } catch (err) {
+          setError(err.message || 'Failed to get analysis status');
+          setLoading(false);
+          setAnalysisId(null);
+        }
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [analysisId, status]);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -19,12 +49,12 @@ export default function Analyze() {
     setResult(null);
     setLoading(true);
     setShowScreenshot(false);
+    setStatus('pending');
     try {
-      const res = await analyzeUrl(url);
-      setResult(res);
+      const initialResult = await analyzeUrl(url);
+      setAnalysisId(initialResult._id);
     } catch (err) {
       setError(err.message || 'Request failed');
-    } finally {
       setLoading(false);
     }
   }
@@ -108,7 +138,7 @@ export default function Analyze() {
     <div className="analyze">
       <form onSubmit={onSubmit} className="form">
         <input aria-label="url-input" value={url} onChange={(e) => setUrl(e.target.value)} className="input" />
-        <button type="submit" disabled={loading} className="btn">{loading ? 'Scanning...' : 'Analyze'}</button>
+        <button type="submit" disabled={loading} className="btn">{loading ? `Scanning... (${status})` : 'Analyze'}</button>
       </form>
 
       {error && <div className="error">{error}</div>}

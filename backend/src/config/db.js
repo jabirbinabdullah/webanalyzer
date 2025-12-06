@@ -2,13 +2,15 @@ import mongoose from 'mongoose';
 
 const connectDB = async () => {
   try {
+    if (process.env.SKIP_DB === 'true') {
+      console.log('SKIP_DB=true — skipping MongoDB connection');
+      return;
+    }
     // Note: This connects to a local MongoDB instance.
     // Make sure you have MongoDB installed and running.
     // You can use a different connection string for a cloud-based MongoDB instance.
-    await mongoose.connect('mongodb://localhost/webanalyzer', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    const uri = process.env.MONGO_URI || 'mongodb://localhost/webanalyzer';
+    await mongoose.connect(uri);
     console.log('MongoDB Connected...');
   } catch (err) {
     console.error('Failed to connect to MongoDB:', err.message);

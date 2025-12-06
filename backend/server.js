@@ -11,6 +11,7 @@ import connectDB from './src/config/db.js';
 import Analysis from './src/models/Analysis.js';
 import { promises as dnsPromises } from 'dns';
 import net from 'net';
+import analysisQueue from './src/queue/analysisQueue.js';
 
 // SSRF / IP validation helpers
 function ipv4ToInt(ip) {
@@ -101,6 +102,33 @@ app.use('/api/portfolio', portfolioRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
+app.get('/api/analysis/:id/status', async (req, res) => {
+  try {
+    const analysis = await Analysis.findById(req.params.id);
+    if (!analysis) {
+      return res.status(404).json({ error: 'Analysis not found' });
+    }
+    res.json({ status: analysis.status });
+  } catch (err) {
+    console.error('Error fetching analysis status:', err.message);
+    res.status(500).json({ error: 'Failed to retrieve analysis status' });
+  }
+});
+
+app.get('/api/analysis/:id', async (req, res) => {
+  try {
+    const analysis = await Analysis.findById(req.params.id);
+    if (!analysis) {
+      return res.status(404).json({ error: 'Analysis not found' });
+    }
+    res.json(analysis);
+  } catch (err) {
+    console.error('Error fetching analysis:', err.message);
+    res.status(500).json({ error: 'Failed to retrieve analysis' });
+  }
+});
+
+
 /**
  * GET /api/analyze?url=
  * Returns basic metadata and technologies detected on the page.
@@ -110,18 +138,14 @@ app.get('/api/analyze', async (req, res) => {
   if (!url) return res.status(400).json({ error: 'Missing url query parameter' });
 
   try {
-    // Basic but effective URL validation. The URL constructor will throw
-    // a TypeError if the URL is malformed. We also check for a valid protocol.
     const urlObject = new URL(url);
     if (urlObject.protocol !== 'http:' && urlObject.protocol !== 'https:') {
       throw new Error('Invalid protocol.');
     }
-    // Reject excessively long URLs
     if (url.length > 2000) {
       return res.status(400).json({ error: 'URL too long.' });
     }
 
-    // SSRF guard: ensure the hostname resolves to a public IP
     const hostAllowed = await isHostAllowed(urlObject.hostname);
     if (!hostAllowed) {
       return res.status(400).json({ error: 'URL host resolves to a private or disallowed IP.' });
@@ -130,120 +154,19 @@ app.get('/api/analyze', async (req, res) => {
     return res.status(400).json({ error: 'Invalid URL provided.' });
   }
 
-  let browser = null;
   try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-    const page = await browser.newPage();
-    const response = await page.goto(url, { waitUntil: 'networkidle2', timeout: 25000 });
-    const html = await page.content();
-    const headers = response.headers();
-    const $ = load(html);
-
-    const title = await page.title();
-    const description = await page.$eval('meta[name="description"]', el => el.content).catch(() => null);
-    const h1 = await page.$eval('h1', el => el.textContent).catch(() => null);
-
-    const pageMetrics = await page.metrics();
-    const performanceTiming = JSON.parse(await page.evaluate(() => JSON.stringify(performance.timing)));
-
-    const metrics = {
-      taskDuration: (pageMetrics.TaskDuration * 1000).toFixed(2), // ms
-      fcp: (performanceTiming.domContentLoadedEventEnd - performanceTiming.navigationStart).toFixed(2), // ms
-      load: (performanceTiming.loadEventEnd - performanceTiming.navigationStart).toFixed(2), // ms
-    };
-
-    const screenshot = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 70 });
-
-    const detectedGlobals = {
-      hasChartJs: await page.evaluate(() => typeof window.Chart !== 'undefined'),
-    };
-
-    const technologies = detectTechnologies({ html, headers, $, detectedGlobals });
-
-    const accessibility = await new AxePuppeteer(page).analyze();
-
-    // SEO Checks (use analyzer module for richer checks)
-    const robotsTxtUrl = new URL('/robots.txt', url).href;
-    const robotsTxt = await axios.get(robotsTxtUrl).then(res => res.data).catch(() => null);
-
-    const wordCount = $('body').text().split(/\s+/).filter(Boolean).length;
-
-    let seoScannerResult = {};
-    try {
-      seoScannerResult = await analyzeSEO({ $, baseUrl: url, robotsTxtText: robotsTxt });
-    } catch (err) {
-      // Non-fatal: capture error into seo field so we can inspect later
-      seoScannerResult = { error: err.message };
-    }
-
-    const seo = {
-      description,
-      descriptionLength: description ? description.length : 0,
-      hasH1: !!h1,
-      wordCount,
-      robotsTxtStatus: robotsTxt ? 'found' : 'not_found',
-      ...seoScannerResult,
-    };
-
-    let lighthouseResult = null;
-    try {
-      // Load Lighthouse dynamically to avoid Jest attempting to parse ESM-only modules at test load time.
-      const lighthouseModule = await import('lighthouse');
-      const lighthouseFn = lighthouseModule && (lighthouseModule.default || lighthouseModule);
-
-      if (typeof lighthouseFn === 'function') {
-        const { lhr } = await lighthouseFn(url, {
-          port: (new URL(browser.wsEndpoint())).port, // Connect Lighthouse to the same Puppeteer instance
-          output: 'json',
-          // Only gather the categories we care about to keep report concise
-          onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo', 'pwa'],
-        }, undefined, page); // Pass page to Lighthouse for existing session
-
-        lighthouseResult = {
-          performance: lhr.categories.performance.score * 100,
-          accessibility: lhr.categories.accessibility.score * 100,
-          bestPractices: lhr.categories['best-practices'].score * 100,
-          seo: lhr.categories.seo.score * 100,
-          pwa: lhr.categories.pwa.score * 100,
-        };
-      } else {
-        lighthouseResult = { error: 'Lighthouse module could not be loaded as a function.' };
-      }
-    } catch (err) {
-      console.error('Lighthouse audit failed:', err.message);
-      lighthouseResult = { error: err.message };
-    }
-
-    const analysisData = {
+    const analysis = new Analysis({
       url,
-      title,
-      description,
-      h1,
-      technologies,
-      metrics,
-      screenshot,
-      accessibility: {
-        violations: accessibility.violations,
-      },
-      seo,
-      lighthouse: lighthouseResult,
-    };
-
-    // Save the analysis to the database
-    const analysis = new Analysis(analysisData);
+      status: 'pending',
+    });
     await analysis.save();
 
-    res.json(analysis);
+    analysisQueue.add({ analysisId: analysis._id });
+
+    res.status(202).json(analysis);
   } catch (err) {
-    console.error('analyze error', err.message);
-    res.status(500).json({ error: 'Failed to fetch or analyze the URL', details: err.message });
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
+    console.error('Failed to enqueue analysis job', err.message);
+    res.status(500).json({ error: 'Failed to start analysis', details: err.message });
   }
 });
 

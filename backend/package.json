@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
+    "worker": "nodemon run-worker.js",
     "test": "jest"
   },
   "dependencies": {

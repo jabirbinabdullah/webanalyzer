@@ -28,6 +28,16 @@ export async function getAnalysesForUrl(url) {
   return res.data;
 }
 
+export async function getAnalysisStatus(analysisId) {
+  const res = await api.get(`/api/analysis/${analysisId}/status`);
+  return res.data;
+}
+
+export async function getAnalysis(analysisId) {
+    const res = await api.get(`/api/analysis/${analysisId}`);
+    return res.data;
+}
+
 export async function exportPdf(analysisId) {
   const response = await api.post(`/api/report`,
     { analysisId },
