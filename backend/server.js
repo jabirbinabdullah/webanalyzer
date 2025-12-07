@@ -94,8 +94,11 @@ app.use('/api', apiLimiter);
 
 const PORT = process.env.PORT || 5000;
 
-import authRouter from './src/routes/auth.js';
-import portfolioRouter from './src/routes/portfolio.js';
+import analysisService from './src/services/analysisService.js';
+import { errorHandler, asyncHandler } from './src/middleware/errorHandler.js';
+import { isHostAllowed, validateUrl } from './src/utils/hostValidator.js';
+
+// ...existing code...
 
 app.use('/api/auth', authRouter);
 app.use('/api/portfolio', portfolioRouter);
@@ -131,44 +134,38 @@ app.get('/api/analysis/:id', async (req, res) => {
 
 /**
  * GET /api/analyze?url=
- * Returns basic metadata and technologies detected on the page.
+ * Start a new website analysis (asynchronous)
+ * Returns analysis ID and initial status for polling
  */
-app.get('/api/analyze', async (req, res) => {
+app.get('/api/analyze', asyncHandler(async (req, res) => {
   const { url } = req.query;
-  if (!url) return res.status(400).json({ error: 'Missing url query parameter' });
+  
+  if (!url) {
+    return res.status(400).json({ error: 'Missing url query parameter' });
+  }
+
+  // Validate URL format
+  const validation = validateUrl(url);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
+  }
 
   try {
+    // Check SSRF - prevent analyzing private IPs
     const urlObject = new URL(url);
-    if (urlObject.protocol !== 'http:' && urlObject.protocol !== 'https:') {
-      throw new Error('Invalid protocol.');
-    }
-    if (url.length > 2000) {
-      return res.status(400).json({ error: 'URL too long.' });
-    }
-
     const hostAllowed = await isHostAllowed(urlObject.hostname);
     if (!hostAllowed) {
       return res.status(400).json({ error: 'URL host resolves to a private or disallowed IP.' });
     }
+
+    // Start analysis via service
+    const result = await analysisService.startAnalysis(url);
+    res.status(202).json(result);
   } catch (err) {
-    return res.status(400).json({ error: 'Invalid URL provided.' });
+    console.error('Failed to start analysis:', err.message);
+    res.status(500).json({ error: 'Failed to start analysis' });
   }
-
-  try {
-    const analysis = new Analysis({
-      url,
-      status: 'pending',
-    });
-    await analysis.save();
-
-    analysisQueue.add({ analysisId: analysis._id });
-
-    res.status(202).json(analysis);
-  } catch (err) {
-    console.error('Failed to enqueue analysis job', err.message);
-    res.status(500).json({ error: 'Failed to start analysis', details: err.message });
-  }
-});
+}));
 
 /**
  * GET /api/analyses?url=
@@ -243,6 +240,8 @@ app.post('/api/report', async (req, res) => {
   }
 });
 
+// Global error handler (must be last)
+app.use(errorHandler);
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => console.log(`Backend listening on http://localhost:${PORT}`));

@@ -1,4 +1,5 @@
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { load } from 'cheerio';
 import axios from 'axios';
 import { AxePuppeteer } from 'axe-puppeteer';
@@ -25,6 +26,7 @@ const processAnalysisJob = async (job) => {
 
     let browser = null;
     try {
+        puppeteer.use(StealthPlugin());
         browser = await puppeteer.launch({
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
