@@ -32,7 +32,15 @@ const processAnalysisJob = async (job) => {
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
         });
         const page = await browser.newPage();
-        const response = await page.goto(url, { waitUntil: 'networkidle2', timeout: 25000 });
+        
+        // Set realistic user agent and headers to avoid rate limiting
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        await page.setExtraHTTPHeaders({
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        });
+        
+        const response = await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
         const html = await page.content();
         const headers = response.headers();
         const $ = load(html);
@@ -61,7 +69,13 @@ const processAnalysisJob = async (job) => {
         const accessibility = await new AxePuppeteer(page).analyze();
 
         const robotsTxtUrl = new URL('/robots.txt', url).href;
-        const robotsTxt = await axios.get(robotsTxtUrl).then(res => res.data).catch(() => null);
+        const robotsTxt = await axios.get(robotsTxtUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/plain,*/*',
+            },
+            timeout: 5000,
+        }).then(res => res.data).catch(() => null);
 
         const wordCount = $('body').text().split(/\s+/).filter(Boolean).length;
 

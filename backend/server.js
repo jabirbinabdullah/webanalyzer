@@ -177,8 +177,28 @@ app.post('/api/report', async (req, res) => {
 // Global error handler (must be last)
 app.use(errorHandler);
 
+// Start the background worker to process analysis jobs
+import { processAnalysisJob } from './src/worker.js';
+
+const startWorker = () => {
+  console.log('Starting background worker...');
+  setInterval(async () => {
+    const job = analysisQueue.getNext();
+    if (job) {
+      try {
+        await processAnalysisJob(job);
+      } catch (err) {
+        console.error('Worker error:', err.message);
+      }
+    }
+  }, 2000); // Check queue every 2 seconds
+};
+
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => console.log(`Backend listening on http://localhost:${PORT}`));
+  app.listen(PORT, () => {
+    console.log(`Backend listening on http://localhost:${PORT}`);
+    startWorker();
+  });
 }
 
 export default app;
