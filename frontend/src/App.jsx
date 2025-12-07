@@ -3,11 +3,13 @@ import { Routes, Route, Link } from 'react-router-dom';
 import Analyze from './pages/Analyze';
 import History from './pages/History';
 import RecentResults from './pages/RecentResults';
+import Compare from './pages/Compare';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Portfolio from './pages/Portfolio';
 import AuthContext from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
+import ThemeToggle from './components/ThemeToggle';
 
 export default function App() {
   const { user, logout } = useContext(AuthContext);
@@ -18,6 +20,7 @@ export default function App() {
         <h1><Link to="/">WebAnalyzer</Link></h1>
         <nav>
           <Link to="/">Analyze</Link>
+          <Link to="/compare">Compare</Link>
           <Link to="/recent-results">Recent Results</Link>
           {user && <Link to="/portfolio">Portfolio</Link>}
           <Link to="/history">History</Link>
@@ -32,11 +35,13 @@ export default function App() {
               <Link to="/register">Register</Link>
             </>
           )}
+          <ThemeToggle />
         </nav>
       </header>
       <main className="main">
         <Routes>
           <Route path="/" element={<Analyze />} />
+          <Route path="/compare" element={<Compare />} />
           <Route path="/recent-results" element={<RecentResults />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
