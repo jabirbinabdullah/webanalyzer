@@ -4,7 +4,6 @@ on:
   schedule:
     # Runs every 30 minutes
     - cron: '*/30 * * * *'
-  # Allow manual trigger
   workflow_dispatch:
 
 jobs:

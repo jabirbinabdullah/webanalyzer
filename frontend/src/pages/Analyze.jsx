@@ -1,8 +1,4 @@
-import React, { useState, useContext } from 'react';
-import { Link } from 'react-router-dom';
-import { analyzeUrl, getAnalysis, getAnalysisStatus, exportPdf, addPortfolioItem } from '../services/api';
-import AuthContext from '../context/AuthContext';
-import { useEffect } from 'react';
+import AnalysisDashboard from '../components/AnalysisDashboard';
 
 export default function Analyze() {
   const [url, setUrl] = useState('https://example.com');
@@ -192,6 +188,10 @@ export default function Analyze() {
               )}
             </div>
           </div>
+          
+          <div style={{ marginBottom: '24px' }}>
+            <AnalysisDashboard analysis={result} />
+          </div>
 
           <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '16px', marginBottom: '16px' }}>
             <p style={{ margin: '0 0 8px 0' }}><strong>Title:</strong> {result.title || '-'}</p>
@@ -276,46 +276,6 @@ export default function Analyze() {
                   </div>
                 )}
 
-              </div>
-            </div>
-          )}
-
-          {result.lighthouse && (
-            <div className="lighthouse-container" style={{ marginTop: '24px', marginBottom: '24px' }}>
-              <h3 style={{ marginTop: '0' }}>Lighthouse Scores</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
-                {result.lighthouse.performance !== undefined && (
-                  <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-                    <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#666', textTransform: 'uppercase', fontWeight: '600' }}>Performance</p>
-                    <p style={{ margin: '0', fontSize: '24px', fontWeight: 'bold', color: result.lighthouse.performance >= 50 ? '#10b981' : '#ef4444' }}>
-                      {result.lighthouse.performance.toFixed(0)}
-                    </p>
-                  </div>
-                )}
-                {result.lighthouse.accessibility !== undefined && (
-                  <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-                    <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#666', textTransform: 'uppercase', fontWeight: '600' }}>Accessibility</p>
-                    <p style={{ margin: '0', fontSize: '24px', fontWeight: 'bold', color: result.lighthouse.accessibility >= 50 ? '#10b981' : '#ef4444' }}>
-                      {result.lighthouse.accessibility.toFixed(0)}
-                    </p>
-                  </div>
-                )}
-                {result.lighthouse.bestPractices !== undefined && (
-                  <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-                    <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#666', textTransform: 'uppercase', fontWeight: '600' }}>Best Practices</p>
-                    <p style={{ margin: '0', fontSize: '24px', fontWeight: 'bold', color: result.lighthouse.bestPractices >= 50 ? '#10b981' : '#ef4444' }}>
-                      {result.lighthouse.bestPractices.toFixed(0)}
-                    </p>
-                  </div>
-                )}
-                {result.lighthouse.seo !== undefined && (
-                  <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-                    <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#666', textTransform: 'uppercase', fontWeight: '600' }}>SEO</p>
-                    <p style={{ margin: '0', fontSize: '24px', fontWeight: 'bold', color: result.lighthouse.seo >= 50 ? '#10b981' : '#ef4444' }}>
-                      {result.lighthouse.seo.toFixed(0)}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           )}
