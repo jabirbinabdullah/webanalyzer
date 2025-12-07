@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import Analyze from './pages/Analyze';
 import History from './pages/History';
+import RecentResults from './pages/RecentResults';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Portfolio from './pages/Portfolio';
@@ -17,6 +18,7 @@ export default function App() {
         <h1><Link to="/">WebAnalyzer</Link></h1>
         <nav>
           <Link to="/">Analyze</Link>
+          <Link to="/recent-results">Recent Results</Link>
           {user && <Link to="/portfolio">Portfolio</Link>}
           <Link to="/history">History</Link>
           {user ? (
@@ -35,6 +37,7 @@ export default function App() {
       <main className="main">
         <Routes>
           <Route path="/" element={<Analyze />} />
+          <Route path="/recent-results" element={<RecentResults />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/history" element={<PrivateRoute />}>

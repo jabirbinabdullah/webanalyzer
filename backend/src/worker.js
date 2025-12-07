@@ -6,6 +6,7 @@ import { AxePuppeteer } from 'axe-puppeteer';
 import { detectTechnologies } from './scanners/techScanner.js';
 import analyzeSEO from './scanners/seoScanner.js';
 import Analysis from './models/Analysis.js';
+import RecentResult from './models/RecentResult.js';
 import connectDB from './config/db.js';
 
 // Connect to the database
@@ -92,8 +93,18 @@ const processAnalysisJob = async (job) => {
             hasH1: !!h1,
             wordCount,
             robotsTxtStatus: robotsTxt ? 'found' : 'not_found',
-            ...seoScannerResult,
         };
+        
+        // Flatten seoScannerResult and convert sitemap object to string if needed
+        if (seoScannerResult && typeof seoScannerResult === 'object') {
+            for (const [key, value] of Object.entries(seoScannerResult)) {
+                if (key === 'sitemap' && value && typeof value === 'object') {
+                    seo[key] = JSON.stringify(value);
+                } else {
+                    seo[key] = value;
+                }
+            }
+        }
 
         let lighthouseResult = null;
         try {
@@ -104,15 +115,14 @@ const processAnalysisJob = async (job) => {
                 const { lhr } = await lighthouseFn(url, {
                     port: (new URL(browser.wsEndpoint())).port,
                     output: 'json',
-                    onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo', 'pwa'],
+                    onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
                 }, undefined, page);
 
                 lighthouseResult = {
-                    performance: lhr.categories.performance.score * 100,
-                    accessibility: lhr.categories.accessibility.score * 100,
-                    bestPractices: lhr.categories['best-practices'].score * 100,
-                    seo: lhr.categories.seo.score * 100,
-                    pwa: lhr.categories.pwa.score * 100,
+                    performance: lhr.categories.performance ? lhr.categories.performance.score * 100 : 0,
+                    accessibility: lhr.categories.accessibility ? lhr.categories.accessibility.score * 100 : 0,
+                    bestPractices: lhr.categories['best-practices'] ? lhr.categories['best-practices'].score * 100 : 0,
+                    seo: lhr.categories.seo ? lhr.categories.seo.score * 100 : 0,
                 };
             } else {
                 lighthouseResult = { error: 'Lighthouse module could not be loaded as a function.' };
@@ -138,11 +148,38 @@ const processAnalysisJob = async (job) => {
         };
 
         await analysis.updateOne(analysisData);
+        
+        // Save recent result for "Recent Results" view
+        const topTechnologies = technologies.slice(0, 5).map(t => ({
+            name: t.name,
+            confidence: t.confidence,
+        }));
+        
+        await RecentResult.create({
+            url,
+            analysisId: analysis._id,
+            status: 'completed',
+            title,
+            description,
+            technologies: topTechnologies,
+            performanceScore: lighthouseResult?.performance || null,
+            accessibilityScore: lighthouseResult?.accessibility || null,
+            seoScore: lighthouseResult?.seo || null,
+        });
+        
         console.log(`Analysis completed for ID: ${analysisId}`);
 
     } catch (err) {
         console.error(`Analysis failed for ID: ${analysisId}`, err.message);
         await analysis.updateOne({ status: 'failed' });
+        
+        // Save failed result for "Recent Results" view
+        await RecentResult.create({
+            url,
+            analysisId: analysis._id,
+            status: 'failed',
+            error: err.message,
+        });
     } finally {
         if (browser) {
             await browser.close();

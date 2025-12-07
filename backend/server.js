@@ -1,5 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
+
+// Load environment variables first
+dotenv.config();
+
 import puppeteer from 'puppeteer';
 import { load } from 'cheerio';
 import axios from 'axios';
@@ -9,6 +14,7 @@ import analyzeSEO from './src/scanners/seoScanner.js';
 import rateLimit from 'express-rate-limit';
 import connectDB from './src/config/db.js';
 import Analysis from './src/models/Analysis.js';
+import RecentResult from './src/models/RecentResult.js';
 import analysisQueue from './src/queue/analysisQueue.js';
 import analysisService from './src/services/analysisService.js';
 import { errorHandler, asyncHandler } from './src/middleware/errorHandler.js';
@@ -122,6 +128,28 @@ app.get('/api/analyses', protect, async (req, res) => {
     res.status(500).json({ error: 'Failed to retrieve analyses' });
   }
 });
+
+/**
+ * GET /api/recent-results
+ * Returns the most recent analyzed URLs (similar to MobSF.live)
+ * Query params:
+ *   - limit: number of results to return (default: 20, max: 100)
+ */
+app.get('/api/recent-results', asyncHandler(async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit || '20'), 100);
+  
+  try {
+    const recentResults = await RecentResult.find()
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+    
+    res.json(recentResults);
+  } catch (err) {
+    console.error('Error fetching recent results:', err.message);
+    res.status(500).json({ error: 'Failed to retrieve recent results' });
+  }
+}));
 
 /**
  * POST /api/report

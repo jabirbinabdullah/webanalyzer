@@ -1,12 +1,18 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { validate } from '../middleware/validation.js';
+import { registerSchema } from '../middleware/validation.js';
 
 const router = express.Router();
 
 // Function to generate JWT
 function generateToken(user) {
-  return jwt.sign({ id: user.id, name: user.name }, process.env.JWT_SECRET || 'your_jwt_secret', {
+  const JWT_SECRET = process.env.JWT_SECRET;
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET is not defined in environment');
+  }
+  return jwt.sign({ id: user.id, name: user.name }, JWT_SECRET, {
     expiresIn: '1d',
   });
 }
@@ -16,18 +22,13 @@ function generateToken(user) {
  * @desc    Register a new user
  * @access  Public
  */
-router.post('/register', async (req, res) => {
+router.post('/register', validate(registerSchema), async (req, res) => {
   const { name, email, password } = req.body;
-
-  // Basic validation
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Please provide name, email, and password' });
-  }
 
   try {
     let user = await User.findOne({ email });
     if (user) {
-      return res.status(400).json({ error: 'User already exists' });
+      return res.status(400).json({ errors: [{ message: 'User already exists', field: 'email' }] });
     }
 
     user = new User({ name, email, password });

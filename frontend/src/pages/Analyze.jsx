@@ -136,8 +136,19 @@ export default function Analyze() {
 
   return (
     <div className="analyze">
+      <div style={{ marginBottom: '24px' }}>
+        <h1>Website Analyzer</h1>
+        <p style={{ color: '#666', marginBottom: '16px' }}>Analyze any website to detect technologies, SEO metrics, accessibility issues, and performance scores</p>
+      </div>
+      
       <form onSubmit={onSubmit} className="form">
-        <input aria-label="url-input" value={url} onChange={(e) => setUrl(e.target.value)} className="input" />
+        <input 
+          aria-label="url-input" 
+          value={url} 
+          onChange={(e) => setUrl(e.target.value)} 
+          className="input"
+          placeholder="https://example.com"
+        />
         <button type="submit" disabled={loading} className="btn">{loading ? `Scanning... (${status})` : 'Analyze'}</button>
       </form>
 
@@ -145,9 +156,12 @@ export default function Analyze() {
 
       {result && (
         <div className="result">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2>Results for {result.url}</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
+              <h2 style={{ margin: '0 0 8px 0' }}>Results for {result.url}</h2>
+              <p style={{ margin: '0', color: '#999', fontSize: '14px' }}>Analyzed on {new Date().toLocaleDateString()}</p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {user && (
                 <button
                   onClick={async () => {
@@ -162,40 +176,46 @@ export default function Analyze() {
                     }
                   }}
                   className="btn"
-                  style={{ marginRight: 8 }}
+                  style={{ marginRight: 0 }}
                 >
                   Add to Portfolio
                 </button>
               )}
-              <Link to={`/history?url=${encodeURIComponent(result.url)}`} className="btn" style={{ marginRight: 8 }}>View History</Link>
-              <button className="btn" onClick={downloadJson} style={{ marginRight: 8 }}>Download JSON</button>
+              <Link to={`/history?url=${encodeURIComponent(result.url)}`} className="btn" style={{ marginRight: 0 }}>View History</Link>
+              <button className="btn" onClick={downloadJson} style={{ marginRight: 0 }}>Download JSON</button>
               <button className="btn" onClick={() => setExportMenuOpen(!exportMenuOpen)}>Export ▾</button>
               {exportMenuOpen && (
-                <div style={{ position: 'absolute', background: '#fff', border: '1px solid #ddd', padding: 8 }}>
-                  <button className="btn" onClick={exportCsv}>Export CSV</button>
-                  <button className="btn" onClick={handleExportPdf} disabled={exportingPdf} style={{ marginLeft: 8 }}>Export PDF</button>
+                <div style={{ position: 'absolute', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', zIndex: 10 }}>
+                  <button className="btn" onClick={exportCsv} style={{ width: '100%', marginBottom: '8px', justifyContent: 'flex-start' }}>Export CSV</button>
+                  <button className="btn" onClick={handleExportPdf} disabled={exportingPdf} style={{ width: '100%' }}>Export PDF</button>
                 </div>
               )}
             </div>
           </div>
 
-          <p><strong>Title:</strong> {result.title || '-'}</p>
-          <p><strong>Description:</strong> {result.description || '-'}</p>
+          <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '16px', marginBottom: '16px' }}>
+            <p style={{ margin: '0 0 8px 0' }}><strong>Title:</strong> {result.title || '-'}</p>
+            <p style={{ margin: '0' }}><strong>Description:</strong> {result.description || '-'}</p>
+          </div>
 
-          <h3>Technologies</h3>
-          <ul>
-            {(result.technologies && result.technologies.length > 0) ? result.technologies.map((t,i) => (
-              <li key={i}>{t.name} {t.confidence ? `— ${Math.round(t.confidence*100)}%` : ''}</li>
-            )) : <li>No technologies detected</li>}
-          </ul>
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{ marginTop: '0' }}>Technologies Detected</h3>
+            <ul style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px', listStyle: 'none', padding: 0 }}>
+              {(result.technologies && result.technologies.length > 0) ? result.technologies.map((t,i) => (
+                <li key={i} style={{ padding: '8px 12px', background: '#f0f9ff', borderRadius: '4px', border: '1px solid #bfdbfe', color: '#0369a1' }}>
+                  <strong>{t.name}</strong> {t.confidence ? `${Math.round(t.confidence*100)}%` : ''}
+                </li>
+              )) : <li>No technologies detected</li>}
+            </ul>
+          </div>
 
           {result.seo && (
-            <div className="seo-container">
-              <h3>SEO Checks</h3>
-              <ul>
-                <li><strong>Meta Description Length:</strong> {result.seo.descriptionLength ?? '-'}</li>
-                <li><strong>Has H1 Tag:</strong> {result.seo.hasH1 ? 'Yes' : 'No'}</li>
-                <li><strong>Word Count:</strong> {result.seo.wordCount ?? '-'}</li>
+            <div className="seo-container" style={{ marginBottom: '24px' }}>
+              <h3 style={{ marginTop: '0' }}>SEO Checks</h3>
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                <li style={{ padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}><strong>Meta Description Length:</strong> {result.seo.descriptionLength ?? '-'}</li>
+                <li style={{ padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}><strong>Has H1 Tag:</strong> <span style={{ color: result.seo.hasH1 ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{result.seo.hasH1 ? '✓ Yes' : '✗ No'}</span></li>
+                <li style={{ padding: '8px 0' }}><strong>Word Count:</strong> {result.seo.wordCount ?? '-'}</li>
               </ul>
 
               <div>
@@ -261,55 +281,89 @@ export default function Analyze() {
           )}
 
           {result.lighthouse && (
-            <div className="lighthouse-container" style={{ marginTop: '20px' }}>
-              <h3>Lighthouse Scores</h3>
-              {result.lighthouse.error ? (
-                <p className="error">Lighthouse audit failed: {result.lighthouse.error}</p>
-              ) : (
-                <ul>
-                  <li>Performance: {result.lighthouse.performance}</li>
-                  <li>Accessibility: {result.lighthouse.accessibility}</li>
-                  <li>Best Practices: {result.lighthouse.bestPractices}</li>
-                  <li>SEO: {result.lighthouse.seo}</li>
-                  <li>PWA: {result.lighthouse.pwa}</li>
-                </ul>
-              )}
+            <div className="lighthouse-container" style={{ marginTop: '24px', marginBottom: '24px' }}>
+              <h3 style={{ marginTop: '0' }}>Lighthouse Scores</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
+                {result.lighthouse.performance !== undefined && (
+                  <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#666', textTransform: 'uppercase', fontWeight: '600' }}>Performance</p>
+                    <p style={{ margin: '0', fontSize: '24px', fontWeight: 'bold', color: result.lighthouse.performance >= 50 ? '#10b981' : '#ef4444' }}>
+                      {result.lighthouse.performance.toFixed(0)}
+                    </p>
+                  </div>
+                )}
+                {result.lighthouse.accessibility !== undefined && (
+                  <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#666', textTransform: 'uppercase', fontWeight: '600' }}>Accessibility</p>
+                    <p style={{ margin: '0', fontSize: '24px', fontWeight: 'bold', color: result.lighthouse.accessibility >= 50 ? '#10b981' : '#ef4444' }}>
+                      {result.lighthouse.accessibility.toFixed(0)}
+                    </p>
+                  </div>
+                )}
+                {result.lighthouse.bestPractices !== undefined && (
+                  <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#666', textTransform: 'uppercase', fontWeight: '600' }}>Best Practices</p>
+                    <p style={{ margin: '0', fontSize: '24px', fontWeight: 'bold', color: result.lighthouse.bestPractices >= 50 ? '#10b981' : '#ef4444' }}>
+                      {result.lighthouse.bestPractices.toFixed(0)}
+                    </p>
+                  </div>
+                )}
+                {result.lighthouse.seo !== undefined && (
+                  <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#666', textTransform: 'uppercase', fontWeight: '600' }}>SEO</p>
+                    <p style={{ margin: '0', fontSize: '24px', fontWeight: 'bold', color: result.lighthouse.seo >= 50 ? '#10b981' : '#ef4444' }}>
+                      {result.lighthouse.seo.toFixed(0)}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
           {result.screenshot && (
-            <div className="screenshot-container" style={{ marginTop: '20px' }}>
-              <button onClick={() => setShowScreenshot(!showScreenshot)} className="btn btn-secondary">
+            <div className="screenshot-container" style={{ marginTop: '24px', marginBottom: '24px' }}>
+              <button onClick={() => setShowScreenshot(!showScreenshot)} className="btn">
                 {showScreenshot ? 'Hide Screenshot' : 'Show Screenshot'}
               </button>
               {showScreenshot && (
                 <img
                   src={`data:image/jpeg;base64,${result.screenshot}`}
                   alt={`Screenshot of ${result.url}`}
-                  style={{ marginTop: '10px', maxWidth: '100%', border: '1px solid #ccc' }}
+                  style={{ marginTop: '16px', maxWidth: '100%', borderRadius: '6px', border: '1px solid #e5e7eb' }}
                 />
               )}
             </div>
           )}
 
           {result.accessibility && result.accessibility.violations && (
-            <div className="accessibility-container" style={{ marginTop: '20px' }}>
-              <h3>Accessibility Violations ({result.accessibility.violations.length})</h3>
+            <div className="accessibility-container" style={{ marginTop: '24px' }}>
+              <h3 style={{ marginTop: '0' }}>Accessibility Violations ({result.accessibility.violations.length})</h3>
               {result.accessibility.violations.length > 0 ? (
-                <ul>
+                <div style={{ display: 'grid', gap: '16px' }}>
                   {result.accessibility.violations.map((violation, i) => (
-                    <li key={i}>
-                      <strong>{violation.id}</strong> ({violation.impact}): {violation.description}
-                      <ul>
-                        {violation.nodes.map((node, j) => (
-                          <li key={j}><code>{node.html}</code></li>
-                        ))}
-                      </ul>
-                    </li>
+                    <div key={i} style={{ padding: '12px', background: violation.impact === 'critical' ? '#fee2e2' : violation.impact === 'serious' ? '#fef3c7' : '#f0fdf4', borderRadius: '6px', border: `1px solid ${violation.impact === 'critical' ? '#fecaca' : violation.impact === 'serious' ? '#fde68a' : '#bbf7d0'}` }}>
+                      <div style={{ marginBottom: '8px' }}>
+                        <strong style={{ color: violation.impact === 'critical' ? '#7f1d1d' : violation.impact === 'serious' ? '#92400e' : '#065f46' }}>{violation.id}</strong>
+                        <span style={{ marginLeft: '8px', fontSize: '12px', fontWeight: '600', color: '#666', textTransform: 'uppercase' }}>({violation.impact})</span>
+                      </div>
+                      <p style={{ margin: '0 0 8px 0', fontSize: '14px' }}>{violation.description}</p>
+                      {violation.nodes && violation.nodes.length > 0 && (
+                        <div style={{ fontSize: '12px', background: 'rgba(0,0,0,0.05)', padding: '8px', borderRadius: '4px', overflow: 'auto', maxHeight: '100px' }}>
+                          {violation.nodes.slice(0, 2).map((node, j) => (
+                            <div key={j} style={{ marginBottom: j < 1 ? '4px' : '0', fontFamily: 'monospace', color: '#666' }}>
+                              {node.html?.substring(0, 100)}...
+                            </div>
+                          ))}
+                          {violation.nodes.length > 2 && <div style={{ marginTop: '4px', color: '#999', fontSize: '11px' }}>+{violation.nodes.length - 2} more</div>}
+                        </div>
+                      )}
+                    </div>
                   ))}
-                </ul>
+                </div>
               ) : (
-                <p>No accessibility violations found.</p>
+                <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0', color: '#065f46' }}>
+                  ✓ No accessibility violations found.
+                </div>
               )}
             </div>
           )}
