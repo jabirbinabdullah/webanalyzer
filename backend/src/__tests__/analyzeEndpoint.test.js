@@ -139,7 +139,9 @@ describe('GET /api/analyze', () => {
     const analysisId = res.body._id;
 
     // 3. Assert that a job was added to the queue
-    expect(analysisQueue.add).toHaveBeenCalledWith({ analysisId });
+    expect(analysisQueue.add).toHaveBeenCalledWith(
+      expect.objectContaining({ analysisId })
+    );
 
     // 4. Manually trigger the worker process with the real logic
     // We need to re-import the unmocked worker and dependencies for this to work

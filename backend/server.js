@@ -9,71 +9,14 @@ import analyzeSEO from './src/scanners/seoScanner.js';
 import rateLimit from 'express-rate-limit';
 import connectDB from './src/config/db.js';
 import Analysis from './src/models/Analysis.js';
-import { promises as dnsPromises } from 'dns';
-import net from 'net';
 import analysisQueue from './src/queue/analysisQueue.js';
-
-// SSRF / IP validation helpers
-function ipv4ToInt(ip) {
-  const parts = ip.split('.').map(Number);
-  if (parts.length !== 4 || parts.some(p => Number.isNaN(p))) return null;
-  return ((parts[0] << 24) >>> 0) + (parts[1] << 16) + (parts[2] << 8) + parts[3];
-}
-
-function isPrivateIPv4(ip) {
-  const i = ipv4ToInt(ip);
-  if (i === null) return false;
-  // 10.0.0.0/8
-  if (i >= ipv4ToInt('10.0.0.0') && i <= ipv4ToInt('10.255.255.255')) return true;
-  // 172.16.0.0/12
-  if (i >= ipv4ToInt('172.16.0.0') && i <= ipv4ToInt('172.31.255.255')) return true;
-  // 192.168.0.0/16
-  if (i >= ipv4ToInt('192.168.0.0') && i <= ipv4ToInt('192.168.255.255')) return true;
-  // 127.0.0.0/8 loopback
-  if (i >= ipv4ToInt('127.0.0.0') && i <= ipv4ToInt('127.255.255.255')) return true;
-  // link-local 169.254.0.0/16
-  if (i >= ipv4ToInt('169.254.0.0') && i <= ipv4ToInt('169.254.255.255')) return true;
-  return false;
-}
-
-function isPrivateIPv6(ip) {
-  // simple checks: loopback ::1, fc00::/7 (unique local), fe80::/10 (link-local)
-  if (!ip) return false;
-  const norm = ip.toLowerCase();
-  if (norm === '::1') return true;
-  if (norm.startsWith('fc') || norm.startsWith('fd')) return true; // fc00::/7
-  if (norm.startsWith('fe80')) return true; // fe80::/10
-  return false;
-}
-
-async function isHostAllowed(hostname) {
-  // In test environment, skip network/DNS checks to allow mocked hosts
-  if (process.env.NODE_ENV === 'test') return true;
-  // If hostname is an IP literal, check directly
-  if (net.isIP(hostname)) {
-    if (net.isIP(hostname) === 4) {
-      return !isPrivateIPv4(hostname);
-    }
-    return !isPrivateIPv6(hostname);
-  }
-
-  // Resolve DNS to get IP addresses
-  try {
-    const records = await dnsPromises.lookup(hostname, { all: true });
-    for (const r of records) {
-      const addr = r.address;
-      if (net.isIP(addr) === 4) {
-        if (isPrivateIPv4(addr)) return false;
-      } else if (net.isIP(addr) === 6) {
-        if (isPrivateIPv6(addr)) return false;
-      }
-    }
-    return true;
-  } catch (err) {
-    // If DNS resolution fails, be conservative and disallow
-    return false;
-  }
-}
+import analysisService from './src/services/analysisService.js';
+import { errorHandler, asyncHandler } from './src/middleware/errorHandler.js';
+import { isHostAllowed, validateUrl } from './src/utils/hostValidator.js';
+import authRouter from './src/routes/auth.js';
+import portfolioRouter from './src/routes/portfolio.js';
+import { protect } from './src/middleware/auth.js';
+import { getReportHTML } from './src/report-template.js';
 
 const app = express();
 app.use(cors());
@@ -93,12 +36,6 @@ const apiLimiter = rateLimit({
 app.use('/api', apiLimiter);
 
 const PORT = process.env.PORT || 5000;
-
-import analysisService from './src/services/analysisService.js';
-import { errorHandler, asyncHandler } from './src/middleware/errorHandler.js';
-import { isHostAllowed, validateUrl } from './src/utils/hostValidator.js';
-
-// ...existing code...
 
 app.use('/api/auth', authRouter);
 app.use('/api/portfolio', portfolioRouter);
@@ -171,9 +108,6 @@ app.get('/api/analyze', asyncHandler(async (req, res) => {
  * GET /api/analyses?url=
  * Returns all historical analyses for a given URL.
  */
-import { protect } from './src/middleware/auth.js';
-import { getReportHTML } from './src/report-template.js';
-
 app.get('/api/analyses', protect, async (req, res) => {
   const { url } = req.query;
   if (!url) {
