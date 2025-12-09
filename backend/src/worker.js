@@ -58,7 +58,6 @@ const processAnalysisJob = async (job) => {
               ssl: { status: 'error', message: secError.message, isValid: false, score: 0 }
             };
         }
-        }
 
         // --- Existing browser-based analysis starts here ---
         puppeteer.use(StealthPlugin());
