@@ -100,7 +100,16 @@ const processAnalysisJob = async (job) => {
 
         const technologies = detectTechnologies({ html, headers, $, detectedGlobals });
 
+        // Suppress iframe injection warnings (expected for cross-origin frames)
+        const originalWarn = console.warn;
+        console.warn = (...args) => {
+          if (!args[0]?.toString().includes('Failed to inject axe-core')) {
+            originalWarn(...args);
+          }
+        };
+        
         const accessibility = await new AxePuppeteer(page).analyze();
+        console.warn = originalWarn;
 
         const robotsTxtUrl = new URL('/robots.txt', url).href;
         const robotsTxt = await axios.get(robotsTxtUrl, {
