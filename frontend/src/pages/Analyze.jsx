@@ -1,3 +1,6 @@
+import React, { useState, useEffect, useContext } from 'react';
+import { analyzeUrl, getAnalysis, getAnalysisStatus, exportToPdf, addToPortfolio } from '../services/api';
+import AuthContext from '../context/AuthContext';
 import AnalysisDashboard from '../components/AnalysisDashboard';
 import PerformanceAnalysis from '../components/PerformanceAnalysis';
 import SecurityAnalysis from '../components/SecurityAnalysis';
