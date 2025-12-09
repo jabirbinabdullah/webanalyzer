@@ -5,7 +5,11 @@ import axios from 'axios';
 import { AxePuppeteer } from 'axe-puppeteer';
 import { detectTechnologies } from './scanners/techScanner.js';
 import analyzeSEO from './scanners/seoScanner.js';
+import { analyzePerformance } from './scanners/performanceScanner.js';
+import { analyzeSecurity } from './scanners/securityScanner.js';
+import { analyzeSSL } from './scanners/sslScanner.js';
 import Analysis from './models/Analysis.js';
+import PerformanceCache from './models/PerformanceCache.js';
 import RecentResult from './models/RecentResult.js';
 import connectDB from './config/db.js';
 
@@ -26,7 +30,37 @@ const processAnalysisJob = async (job) => {
     const { url } = analysis;
 
     let browser = null;
+    let performanceResult = null;
+    let securityResult = null;
+
     try {
+        // --- Run Performance Analysis (uses its own Puppeteer instance for Lighthouse) ---
+        try {
+            performanceResult = await analyzePerformance(url);
+            console.log(`Performance analysis for ${url} completed.`);
+        } catch (perfError) {
+            console.error(`Error in performance analysis for ${url}:`, perfError);
+            performanceResult = { score: null, metrics: {}, recommendations: [`Error: ${perfError.message}`] };
+        }
+
+        // --- Run Security Analysis ---
+        try {
+            securityResult = await analyzeSecurity(url);
+            const sslResult = await analyzeSSL(url);
+            securityResult.ssl = sslResult;
+            console.log(`Security analysis for ${url} completed.`);
+        } catch (secError) {
+            console.error(`Error in security analysis for ${url}:`, secError);
+            securityResult = { 
+              status: 'error', 
+              message: secError.message, 
+              headers: {},
+              ssl: { status: 'error', message: secError.message, isValid: false, score: 0 }
+            };
+        }
+        }
+
+        // --- Existing browser-based analysis starts here ---
         puppeteer.use(StealthPlugin());
         browser = await puppeteer.launch({
             headless: true,
@@ -43,7 +77,7 @@ const processAnalysisJob = async (job) => {
         
         const response = await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
         const html = await page.content();
-        const headers = response.headers();
+        const headers = response.headers(); // Headers from the puppeteer request
         const $ = load(html);
 
         const title = await page.title();
@@ -144,6 +178,8 @@ const processAnalysisJob = async (job) => {
             },
             seo,
             lighthouse: lighthouseResult,
+            performance: performanceResult, // Add new performance data
+            security: securityResult,     // Add new security data
             status: 'completed',
         };
 
@@ -162,7 +198,7 @@ const processAnalysisJob = async (job) => {
             title,
             description,
             technologies: topTechnologies,
-            performanceScore: lighthouseResult?.performance || null,
+            performanceScore: performanceResult?.score || null, // Use new performance score
             accessibilityScore: lighthouseResult?.accessibility || null,
             seoScore: lighthouseResult?.seo || null,
         });

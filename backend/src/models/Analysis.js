@@ -77,6 +77,63 @@ if (process.env.SKIP_DB === 'true') {
     pwa: Number,
     error: String,
   },
+  performance: {
+    score: Number,
+    metrics: {
+      firstContentfulPaint: String,
+      largestContentfulPaint: String,
+      cumulativeLayoutShift: String,
+      totalBlockingTime: String,
+      speedIndex: String,
+      interactive: String,
+      numeric: {
+        lcp: Number,
+        cls: Number,
+        tbt: Number,
+        fcp: Number,
+        si: Number,
+        tti: Number,
+      }
+    },
+    recommendations: [String],
+    details: Object, // To store the full Lighthouse audit report if needed
+  },
+  security: {
+    status: String,
+    message: String,
+    headers: Object,
+    leakageHeaders: Object,
+    corsStatus: String,
+    isHTTPS: Boolean,
+    securityScore: Number,
+    recommendations: [String],
+    ssl: {
+      status: String,
+      isValid: Boolean,
+      certificate: {
+        subject: String,
+        issuer: String,
+        validFrom: String,
+        validUntil: String,
+        daysUntilExpiry: Number,
+        isExpired: Boolean,
+        expiryWarning: Boolean,
+      },
+      hostname: {
+        requested: String,
+        commonName: String,
+        subjectAltNames: [String],
+        isValid: Boolean,
+      },
+      keyInfo: {
+        size: Number,
+        algorithm: String,
+        strength: String,
+      },
+      score: Number,
+      recommendations: [String],
+    },
+  },
   status: {
     type: String,
     enum: ['pending', 'in-progress', 'completed', 'failed'],

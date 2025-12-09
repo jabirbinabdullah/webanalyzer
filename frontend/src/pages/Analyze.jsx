@@ -1,4 +1,8 @@
 import AnalysisDashboard from '../components/AnalysisDashboard';
+import PerformanceAnalysis from '../components/PerformanceAnalysis';
+import SecurityAnalysis from '../components/SecurityAnalysis';
+import '../styles/performance.css';
+import '../styles/security.css';
 
 export default function Analyze() {
   const [url, setUrl] = useState('https://example.com');
@@ -326,6 +330,16 @@ export default function Analyze() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Performance Analysis Component */}
+          {result.performance && (
+            <PerformanceAnalysis result={result.performance} />
+          )}
+
+          {/* Security Analysis Component */}
+          {result.security && (
+            <SecurityAnalysis result={result.security} />
           )}
         </div>
       )}

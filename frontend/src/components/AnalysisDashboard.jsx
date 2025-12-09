@@ -27,7 +27,7 @@ ChartJS.register(
  * @param {object} props.analysis - The full analysis result object.
  */
 export default function AnalysisDashboard({ analysis }) {
-  if (!analysis || !analysis.lighthouse || !analysis.accessibility) {
+  if (!analysis) {
     return (
       <div className="analysis-dashboard-placeholder">
         <p>Awaiting analysis data for visualization...</p>
@@ -35,19 +35,19 @@ export default function AnalysisDashboard({ analysis }) {
     );
   }
 
-  const { lighthouse, accessibility } = analysis;
+  const { lighthouse, accessibility, performance, security } = analysis;
 
-  // --- Data for Radar Chart ---
+  // --- Data for Radar Chart (Lighthouse) ---
   const radarChartData = {
     labels: ['Performance', 'Accessibility', 'Best Practices', 'SEO'],
     datasets: [
       {
         label: 'Lighthouse Score',
         data: [
-          lighthouse.performance || 0,
-          lighthouse.accessibility || 0,
-          lighthouse.bestPractices || 0,
-          lighthouse.seo || 0,
+          lighthouse?.performance || 0,
+          lighthouse?.accessibility || 0,
+          lighthouse?.bestPractices || 0,
+          lighthouse?.seo || 0,
         ],
         backgroundColor: 'rgba(54, 162, 235, 0.2)',
         borderColor: 'rgba(54, 162, 235, 1)',
@@ -77,13 +77,13 @@ export default function AnalysisDashboard({ analysis }) {
     maintainAspectRatio: false,
   };
 
-  // --- Data for Doughnut Chart ---
-  const violationCounts = (accessibility.violations || []).reduce((acc, violation) => {
+  // --- Data for Doughnut Chart (Accessibility Violations) ---
+  const violationCounts = (accessibility?.violations || []).reduce((acc, violation) => {
     acc[violation.impact] = (acc[violation.impact] || 0) + 1;
     return acc;
   }, {});
 
-  const totalViolations = (accessibility.violations || []).length;
+  const totalViolations = (accessibility?.violations || []).length;
 
   const doughnutChartData = {
     labels: ['Critical', 'Serious', 'Moderate', 'Minor'],
@@ -128,27 +128,79 @@ export default function AnalysisDashboard({ analysis }) {
 
   return (
     <div className="analysis-dashboard" style={{ padding: '20px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+      {/* Lighthouse Overview & Accessibility Issues */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', alignItems: 'center' }}>
-        <div>
-          <h3 style={{ textAlign: 'center', marginBottom: '10px' }}>Lighthouse Overview</h3>
-          <div style={{ position: 'relative', height: '300px' }}>
-            <Radar data={radarChartData} options={radarChartOptions} />
+        {lighthouse && (
+          <div>
+            <h3 style={{ textAlign: 'center', marginBottom: '10px' }}>Lighthouse Overview</h3>
+            <div style={{ position: 'relative', height: '300px' }}>
+              <Radar data={radarChartData} options={radarChartOptions} />
+            </div>
           </div>
-        </div>
-        <div>
-          <h3 style={{ textAlign: 'center', marginBottom: '10px' }}>Accessibility Issues</h3>
-          <div style={{ position: 'relative', height: '300px' }}>
-            <Doughnut data={doughnutChartData} options={doughnutChartOptions} />
+        )}
+        {accessibility && (
+          <div>
+            <h3 style={{ textAlign: 'center', marginBottom: '10px' }}>Accessibility Issues</h3>
+            <div style={{ position: 'relative', height: '300px' }}>
+              <Doughnut data={doughnutChartData} options={doughnutChartOptions} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px', marginTop: '30px', borderTop: '1px solid #f0f0f0', paddingTop: '30px' }}>
-        <ScoreCard label="Performance" score={lighthouse.performance} />
-        <ScoreCard label="Accessibility" score={lighthouse.accessibility} />
-        <ScoreCard label="Best Practices" score={lighthouse.bestPractices} />
-        <ScoreCard label="SEO" score={lighthouse.seo} />
-      </div>
+      {/* Lighthouse Score Cards */}
+      {lighthouse && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px', marginTop: '30px', borderTop: '1px solid #f0f0f0', paddingTop: '30px' }}>
+          <ScoreCard label="Lighthouse Performance" score={lighthouse.performance} />
+          <ScoreCard label="Lighthouse Accessibility" score={lighthouse.accessibility} />
+          <ScoreCard label="Lighthouse Best Practices" score={lighthouse.bestPractices} />
+          <ScoreCard label="Lighthouse SEO" score={lighthouse.seo} />
+        </div>
+      )}
+
+      {/* New Performance Metrics */}
+      {performance && (
+        <div style={{ marginTop: '30px', borderTop: '1px solid #f0f0f0', paddingTop: '30px' }}>
+          <h3 style={{ marginBottom: '15px' }}>Detailed Performance Analysis</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+            <ScoreCard label="Overall Performance Score" score={performance.score} />
+            {performance.metrics?.largestContentfulPaint && <MetricCard label="Largest Contentful Paint (LCP)" value={performance.metrics.largestContentfulPaint} />}
+            {performance.metrics?.cumulativeLayoutShift && <MetricCard label="Cumulative Layout Shift (CLS)" value={performance.metrics.cumulativeLayoutShift} />}
+            {performance.metrics?.totalBlockingTime && <MetricCard label="Total Blocking Time (TBT)" value={performance.metrics.totalBlockingTime} />}
+            {performance.metrics?.firstContentfulPaint && <MetricCard label="First Contentful Paint (FCP)" value={performance.metrics.firstContentfulPaint} />}
+            {performance.metrics?.speedIndex && <MetricCard label="Speed Index" value={performance.metrics.speedIndex} />}
+            {performance.metrics?.interactive && <MetricCard label="Time to Interactive (TTI)" value={performance.metrics.interactive} />}
+          </div>
+          {performance.recommendations && performance.recommendations.length > 0 && (
+            <div style={{ marginTop: '20px' }}>
+              <h4>Performance Recommendations:</h4>
+              <ul style={{ listStyleType: 'disc', marginLeft: '20px' }}>
+                {performance.recommendations.map((rec, index) => (
+                  <li key={index}>{rec}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* New Security Headers */}
+      {security && (
+        <div style={{ marginTop: '30px', borderTop: '1px solid #f0f0f0', paddingTop: '30px' }}>
+          <h3 style={{ marginBottom: '15px' }}>Security Headers Analysis</h3>
+          {security.status === 'error' ? (
+            <p style={{ color: '#ef4444' }}>Error during security analysis: {security.message}</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+              {Object.entries(security.headers || {}).map(([header, status]) => (
+                <div key={header} style={{ padding: '10px', border: '1px solid #eee', borderRadius: '5px', background: status === 'Present' ? '#d4edda' : '#f8d7da', color: status === 'Present' ? '#155724' : '#721c24' }}>
+                  <strong>{header}:</strong> {status}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -174,6 +226,25 @@ function ScoreCard({ label, score = 0 }) {
         {Math.round(score)}
       </div>
       <div style={{ marginTop: '10px', fontSize: '1rem', color: '#333' }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A small component to display a single metric.
+ * @param {object} props
+ * @param {string} props.label
+ * @param {string} props.value
+ */
+function MetricCard({ label, value }) {
+  return (
+    <div style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '15px', textAlign: 'center', background: '#f9f9f9' }}>
+      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#333' }}>
+        {value}
+      </div>
+      <div style={{ marginTop: '5px', fontSize: '0.9rem', color: '#555' }}>
         {label}
       </div>
     </div>
