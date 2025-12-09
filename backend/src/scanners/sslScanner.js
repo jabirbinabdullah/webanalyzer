@@ -71,7 +71,18 @@ function analyzeCertificate(cert, hostname) {
 
   const now = new Date();
   const validFrom = new Date(cert.valid_from);
-  const validTo = new Date(cert.valid_until);
+  const validTo = new Date(cert.valid_to);
+  
+  // Validate dates
+  if (isNaN(validFrom.getTime()) || isNaN(validTo.getTime())) {
+    return {
+      status: 'error',
+      message: 'Invalid certificate dates',
+      isValid: false,
+      score: 0,
+    };
+  }
+  
   const isExpired = now > validTo;
   const daysUntilExpiry = Math.floor((validTo - now) / (1000 * 60 * 60 * 24));
   const issuer = cert.issuer?.O || cert.issuer?.CN || 'Unknown';
