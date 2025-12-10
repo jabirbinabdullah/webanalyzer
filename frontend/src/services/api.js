@@ -18,8 +18,27 @@ api.interceptors.request.use((config) => {
 });
 
 
-export async function analyzeUrl(url) {
-  const res = await api.get(`/api/analyze`, { params: { url } });
+export async function analyzeUrl(url, types = []) {
+  const res = await api.get(`/api/analyze`, {
+    params: {
+      url,
+      types, // Axios will serialize the array into multiple `types=` query params
+    },
+    // To handle arrays in query parameters correctly if needed
+    paramsSerializer: params => {
+      const searchParams = new URLSearchParams();
+      for (const key in params) {
+        if (Array.isArray(params[key])) {
+          for (const val of params[key]) {
+            searchParams.append(key, val);
+          }
+        } else {
+          searchParams.append(key, params[key]);
+        }
+      }
+      return searchParams.toString();
+    }
+  });
   return res.data;
 }
 

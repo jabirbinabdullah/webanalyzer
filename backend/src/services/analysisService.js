@@ -11,20 +11,23 @@ export class AnalysisService {
    * @param {string} url - Website URL to analyze
    * @returns {Promise<Object>} Created analysis document with _id and status
    */
-  async startAnalysis(url) {
+  async startAnalysis(url, types = []) {
     try {
       const analysis = new Analysis({
         url,
         status: 'pending',
         createdAt: new Date(),
+        // Potentially store the requested types in the model itself if desired
+        // requestedAnalyses: types, 
       });
       
       await analysis.save();
       
-      // Queue the analysis job
+      // Queue the analysis job with the selected types
       await analysisQueue.add({
         analysisId: analysis._id,
         url,
+        types,
       });
       
       return {

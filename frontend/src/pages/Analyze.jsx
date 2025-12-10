@@ -18,7 +18,19 @@ export default function Analyze() {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [analysisId, setAnalysisId] = useState(null);
   const [status, setStatus] = useState(null);
+  const [analysisTypes, setAnalysisTypes] = useState({
+    tech: true,
+    seo: true,
+    performance: true,
+    accessibility: true,
+    security: true,
+  });
   const { user } = useContext(AuthContext) || {};
+
+  const handleAnalysisTypeChange = (event) => {
+    const { name, checked } = event.target;
+    setAnalysisTypes(prev => ({ ...prev, [name]: checked }));
+  };
 
   useEffect(() => {
     let interval;
@@ -55,7 +67,8 @@ export default function Analyze() {
     setShowScreenshot(false);
     setStatus('pending');
     try {
-      const initialResult = await analyzeUrl(url);
+      const selectedTypes = Object.keys(analysisTypes).filter(key => analysisTypes[key]);
+      const initialResult = await analyzeUrl(url, selectedTypes);
       setAnalysisId(initialResult._id);
     } catch (err) {
       setError(err.message || 'Request failed');
@@ -138,6 +151,14 @@ export default function Analyze() {
     }
   }
 
+  const analysisOptions = [
+    { key: 'tech', label: 'Tech Stack' },
+    { key: 'seo', label: 'SEO' },
+    { key: 'performance', label: 'Performance' },
+    { key: 'accessibility', label: 'Accessibility' },
+    { key: 'security', label: 'Security' },
+  ];
+
   return (
     <div className="analyze">
       <div style={{ marginBottom: '24px' }}>
@@ -153,6 +174,22 @@ export default function Analyze() {
           className="input"
           placeholder="https://example.com"
         />
+
+        <div style={{ margin: '16px 0', display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'center' }}>
+          {analysisOptions.map(option => (
+            <label key={option.key} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                name={option.key}
+                checked={analysisTypes[option.key]}
+                onChange={handleAnalysisTypeChange}
+                style={{ marginRight: '8px' }}
+              />
+              {option.label}
+            </label>
+          ))}
+        </div>
+
         <button type="submit" disabled={loading} className="btn">{loading ? `Scanning... (${status})` : 'Analyze'}</button>
       </form>
 

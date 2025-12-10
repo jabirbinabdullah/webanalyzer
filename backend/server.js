@@ -81,11 +81,14 @@ app.get('/api/analysis/:id', async (req, res) => {
  * Returns analysis ID and initial status for polling
  */
 app.get('/api/analyze', asyncHandler(async (req, res) => {
-  const { url } = req.query;
+  const { url, types } = req.query; // Extract types from query
   
   if (!url) {
     return res.status(400).json({ error: 'Missing url query parameter' });
   }
+
+  // Ensure 'types' is always an array
+  const analysisTypes = Array.isArray(types) ? types : (types ? [types] : []);
 
   // Validate URL format
   const validation = validateUrl(url);
@@ -101,8 +104,8 @@ app.get('/api/analyze', asyncHandler(async (req, res) => {
       return res.status(400).json({ error: 'URL host resolves to a private or disallowed IP.' });
     }
 
-    // Start analysis via service
-    const result = await analysisService.startAnalysis(url);
+    // Start analysis via service, passing the selected types
+    const result = await analysisService.startAnalysis(url, analysisTypes);
     res.status(202).json(result);
   } catch (err) {
     console.error('Failed to start analysis:', err.message);
