@@ -5,6 +5,7 @@ import AuthContext from '../context/AuthContext';
 import AnalysisDashboard from '../components/AnalysisDashboard';
 import PerformanceAnalysis from '../components/PerformanceAnalysis';
 import SecurityAnalysis from '../components/SecurityAnalysis';
+import { triggerFileDownload, generateFilename } from '../utils/downloadUtils'; // Import new utilities
 import '../styles/performance.css';
 import '../styles/security.css';
 
@@ -78,16 +79,8 @@ export default function Analyze() {
 
   function downloadJson() {
     try {
-      const filenameHost = (() => { try { return new URL(result.url).hostname.replace(/[:\\/\\\\]/g, '-'); } catch { return 'analysis'; } })();
-      const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
-      const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `analysis-${filenameHost}-${ts}.json`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(link.href);
+      const filename = generateFilename(result.url, 'analysis', 'json');
+      triggerFileDownload(JSON.stringify(result, null, 2), filename, 'application/json');
     } catch (e) {
       console.error('Download failed', e);
       alert('Failed to download JSON');
@@ -101,7 +94,7 @@ export default function Analyze() {
         const s = String(v).replace(/"/g, '""');
         return `"${s}"`;
       };
-      const headers = ['url','title','description','h1','metaDescriptionLength','wordCount','robotsTxtStatus','canonical','technologies','taskDuration_ms','fcp_ms','load_ms','accessibility_violations','sitemap_urlcount'];
+      const headers = ['url','title','description','h1','metaDescriptionLength','wordCount','robotsTxtStatus','canonical','technologies','tbt_ms','fcp_ms','tti_ms','accessibility_violations','sitemap_urlcount']; // Updated headers
       const row = [
         result.url,
         result.title,
@@ -112,23 +105,15 @@ export default function Analyze() {
         result.seo?.robotsTxtStatus ?? '',
         result.seo?.canonical?.resolved ?? '',
         (result.technologies || []).map(t=>t.name).join('; '),
-        result.metrics?.taskDuration ?? '',
-        result.metrics?.fcp ?? '',
-        result.metrics?.load ?? '',
+        result.performance?.metrics?.numeric?.tbt ?? '', // Corrected data access
+        result.performance?.metrics?.numeric?.fcp ?? '', // Corrected data access
+        result.performance?.metrics?.numeric?.tti ?? '', // Corrected data access
         (result.accessibility?.violations || []).length,
         result.seo?.sitemap?.urlCount ?? ''
       ];
       const csv = headers.join(',') + '\n' + row.map(escapeCsv).join(',');
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const filenameHost = (() => { try { return new URL(result.url).hostname.replace(/[:\\/\\\\]/g, '-'); } catch { return 'analysis'; } })();
-      const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `analysis-${filenameHost}-${ts}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(link.href);
+      const filename = generateFilename(result.url, 'analysis', 'csv');
+      triggerFileDownload(csv, filename, 'text/csv');
     } catch (e) {
       console.error('CSV export failed', e);
       alert('CSV export failed');
@@ -212,7 +197,7 @@ export default function Analyze() {
                         await addPortfolioItem(result.url, name);
                         alert('Added to portfolio!');
                       } catch (err) {
-                        alert('Failed to add to portfolio. ' + (err.response?.data?.error || err.message));
+                        alert('Failed to add to portfolio. ' + err.message);
                       }
                     }
                   }}

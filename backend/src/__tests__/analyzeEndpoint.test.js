@@ -16,6 +16,13 @@ jest.mock('../../src/worker.js', () => ({
   processAnalysisJob: jest.fn(),
 }));
 
+// Mock the host validator to prevent DNS lookups during tests
+import { isHostAllowed } from '../../src/utils/hostValidator.js';
+jest.mock('../../src/utils/hostValidator.js', () => ({
+  ...jest.requireActual('../../src/utils/hostValidator.js'), // Keep other exports like validateUrl
+  isHostAllowed: jest.fn().mockResolvedValue(true), // Default to allowed
+}));
+
 // Mock the queue so we can check that jobs are added
 import analysisQueue from '../../src/queue/analysisQueue.js';
 jest.mock('../../src/queue/analysisQueue.js', () => ({

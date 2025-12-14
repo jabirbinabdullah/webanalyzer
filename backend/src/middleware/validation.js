@@ -1,28 +1,31 @@
-import Joi from 'joi';
+import { z } from 'zod';
 
-const passwordComplexity = new Joi.string()
-  .min(8)
-  .pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])'))
-  .required()
-  .messages({
-    'string.min': 'Password must be at least 8 characters long',
-    'string.pattern.base': 'Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character (!@#$%^&*)',
-  });
-
-export const registerSchema = Joi.object({
-  name: Joi.string().min(3).required(),
-  email: Joi.string().email().required(),
-  password: passwordComplexity,
-});
-
+/**
+ * A middleware factory that creates a validation middleware for a given Zod schema.
+ * It validates the request's query, body, and params.
+ *
+ * @param {z.ZodObject<any, any, any>} schema - The Zod schema to validate against.
+ * @returns {import('express').RequestHandler} An Express middleware function.
+ */
 export const validate = (schema) => (req, res, next) => {
-  const { error } = schema.validate(req.body, { abortEarly: false });
-  if (error) {
-    const errors = error.details.map((detail) => ({
-      message: detail.message,
-      field: detail.context.key,
-    }));
-    return res.status(400).json({ errors });
+  try {
+    schema.parse({
+      body: req.body,
+      query: req.query,
+      params: req.params,
+    });
+    next();
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: error.errors.map(e => ({
+          path: e.path.join('.'),
+          message: e.message,
+        })),
+      });
+    }
+    // For non-Zod errors, pass to the global error handler
+    next(error);
   }
-  next();
 };

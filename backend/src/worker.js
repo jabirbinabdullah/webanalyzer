@@ -1,13 +1,12 @@
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { load } from 'cheerio';
 import axios from 'axios';
 import { AxePuppeteer } from 'axe-puppeteer';
 import { detectTechnologies } from './scanners/techScanner.js';
 import analyzeSEO from './scanners/seoScanner.js';
-import { analyzePerformance } from './scanners/performanceScanner.js';
+import { analyzeLighthouseReport } from './scanners/lighthouseScanner.js';
 import { analyzeSecurity } from './scanners/securityScanner.js';
 import { analyzeSSL } from './scanners/sslScanner.js';
+import { getBrowser } from './utils/browserManager.js';
 import Analysis from './models/Analysis.js';
 import PerformanceCache from './models/PerformanceCache.js';
 import RecentResult from './models/RecentResult.js';
@@ -37,17 +36,21 @@ const processAnalysisJob = async (job) => {
     const runAccessibility = runAll || types.includes('accessibility');
     const runSecurity = runAll || types.includes('security');
 
-    let browser = null;
+    let page = null;
     let analysisData = {};
 
     try {
+        const browser = getBrowser();
+        
         if (runPerformance) {
             try {
-                const performanceResult = await analyzePerformance(url);
-                console.log(`Performance analysis for ${url} completed.`);
-                analysisData.performance = performanceResult;
+                const lighthouseResult = await analyzeLighthouseReport(url, browser);
+                console.log(`Lighthouse analysis for ${url} completed.`);
+                analysisData.lighthouse = lighthouseResult.lighthouse;
+                analysisData.performance = lighthouseResult.performance;
             } catch (perfError) {
-                console.error(`Error in performance analysis for ${url}:`, perfError);
+                console.error(`Error in Lighthouse analysis for ${url}:`, perfError);
+                analysisData.lighthouse = { performance: 0, accessibility: 0, 'best-practices': 0, seo: 0 };
                 analysisData.performance = { score: null, metrics: {}, recommendations: [`Error: ${perfError.message}`] };
             }
         }
@@ -72,12 +75,7 @@ const processAnalysisJob = async (job) => {
 
         // The main browser-based analysis is needed for tech, seo, and accessibility
         if (runTech || runSeo || runAccessibility) {
-            puppeteer.use(StealthPlugin());
-            browser = await puppeteer.launch({
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox'],
-            });
-            const page = await browser.newPage();
+            page = await browser.newPage();
             
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
             await page.setExtraHTTPHeaders({
@@ -163,8 +161,8 @@ const processAnalysisJob = async (job) => {
         
         await RecentResult.create({ url, analysisId: analysis._id, status: 'failed', error: err.message });
     } finally {
-        if (browser) {
-            await browser.close();
+        if (page) {
+            await page.close();
         }
     }
 };

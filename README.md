@@ -15,7 +15,7 @@ A comprehensive website analysis tool that detects technologies, audits accessib
 - **Rate Limiting** - 100 requests per 15 minutes per IP to prevent abuse
 
 ### User Features
-- **Real-time Analysis** - Asynchronous job queue with live progress polling
+- **Persistent & Asynchronous Analysis** - Robust job queueing with BullMQ and Redis ensures analysis jobs are not lost on restart and are automatically retried on failure. The frontend polls for live progress updates.
 - **Recent Results** - View the latest 50 website analyses (auto-saved after each scan)
 - **Analysis History** - Track all analyses for a given URL over time
 - **Export Options** - Download results as JSON, CSV, or PDF reports
@@ -93,6 +93,7 @@ webanalyzer/
 ### Prerequisites
 - Node.js 16+
 - MongoDB (local or Atlas)
+- Redis (local or remote)
 - Chrome/Chromium (for Puppeteer)
 
 ### Backend Setup
@@ -107,6 +108,8 @@ JWT_SECRET=your-super-secret-jwt-key-change-in-production
 MONGODB_URI=mongodb://localhost:27017/webanalyzer
 NODE_ENV=development
 PORT=5000
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
 EOF
 
 # Start backend
@@ -205,8 +208,7 @@ npm test
 ## Performance Characteristics
 
 - **Typical Analysis Time**: 10-30 seconds per website
-- **Concurrent Analyses**: Handled via background worker queue
-- **Worker Check Interval**: Every 2 seconds
+- **Concurrent Analyses**: Handled via background worker queue (BullMQ)
 - **Database Indexes**: URL, timestamp for efficient queries
 
 ## Troubleshooting
@@ -235,8 +237,6 @@ The system includes realistic user-agent headers to avoid being blocked by sites
 
 ## Future Enhancements
 
-- [ ] Upgrade to Redis/Bull for production-grade queue
-- [ ] Add persistent job storage with retry logic
 - [ ] Expand technology detection rules
 - [ ] Implement technology version detection
 - [ ] Add more granular performance metrics

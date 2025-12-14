@@ -2,6 +2,25 @@
 
 All notable changes to WebAnalyzer will be documented in this file.
 
+## [1.2.0] - 2025-12-13
+
+### Added
+- **Persistent Job Queue**: Implemented BullMQ with a Redis backend to replace the in-memory queue, ensuring jobs are not lost on server restart.
+- **Centralized API Validation**: Added Zod for robust, schema-based validation on API endpoints, starting with `/api/analyze`.
+- **Browser Stealth Capability**: Integrated `puppeteer-extra` with the stealth plugin into the central browser manager to improve analysis reliability and avoid bot detection.
+- **Full Lighthouse Report Scanner**: Created a new `lighthouseScanner.js` to run a comprehensive Lighthouse analysis, providing full category scores (Performance, Accessibility, SEO, Best Practices) to the frontend.
+- **Code Duplication Utilities**: Created a `downloadUtils.js` file in the frontend to centralize file download logic.
+
+### Changed
+- **Major Performance Refactor**: All browser-based tasks (performance scans, PDF reports, worker jobs) now use a single, shared browser instance, drastically reducing resource usage and improving job processing speed.
+- **Improved Worker Reliability**: The background worker no longer uses `setInterval` and now relies on the robust BullMQ producer/consumer pattern.
+- **Modular Backend Routing**: Refactored `server.js` by moving all analysis-related API routes into a separate `analysisRoutes.js` file for better organization.
+- **Simplified Frontend Downloads**: Refactored the `Analyze.jsx` page to use the new `downloadUtils.js` for exporting JSON and CSV files, reducing code duplication.
+
+### Fixed
+- **Dashboard Data Discrepancy**: Corrected a major issue where the frontend `AnalysisDashboard` was not receiving the complete Lighthouse scores it expected. The backend now provides all four category scores.
+- **CSV Export Accuracy**: Updated the CSV export logic in `Analyze.jsx` to reflect the new performance metrics provided by the full Lighthouse report.
+
 ## [1.1.0] - 2024-12-07
 
 ### Added

@@ -1,5 +1,5 @@
 import lighthouse from 'lighthouse';
-import puppeteer from 'puppeteer';
+import { getBrowser } from '../utils/browserManager.js';
 import { getCachedPerformance, cachePerformance } from '../models/PerformanceCache.js';
 
 /**
@@ -25,12 +25,8 @@ export const analyzePerformance = async (url, skipCache = false) => {
     }
   }
 
-  let browser;
   try {
-    browser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      headless: true,
-    });
+    const browser = getBrowser(); // Get the shared browser instance
 
     const { lhr } = await lighthouse(url, {
       port: (new URL(browser.wsEndpoint())).port,
@@ -88,9 +84,6 @@ export const analyzePerformance = async (url, skipCache = false) => {
       details: null,
       fromCache: false,
     };
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
   }
+  // The finally block with browser.close() is intentionally removed
 };

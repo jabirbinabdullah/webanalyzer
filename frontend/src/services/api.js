@@ -6,7 +6,7 @@ const api = axios.create({
   baseURL: API_BASE,
 });
 
-// Add a request interceptor to include the token in headers
+// Add request interceptor for auth token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -16,6 +16,21 @@ api.interceptors.request.use((config) => {
 }, (error) => {
   return Promise.reject(error);
 });
+
+// Add a response interceptor to standardize error handling
+api.interceptors.response.use(
+  (response) => response, // Directly return successful responses
+  (error) => {
+    // Extract a meaningful error message from the backend response
+    const message =
+      error.response?.data?.error?.message || // Backend's structured error
+      error.response?.data?.error || // Sometimes just a string
+      error.message; // Fallback to the default error message
+
+    // Reject a new promise with the simplified message
+    return Promise.reject(new Error(message));
+  }
+);
 
 
 export async function analyzeUrl(url, types = []) {

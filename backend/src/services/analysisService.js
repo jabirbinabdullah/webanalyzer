@@ -24,7 +24,7 @@ export class AnalysisService {
       await analysis.save();
       
       // Queue the analysis job with the selected types
-      await analysisQueue.add({
+      await analysisQueue.add('analysis', {
         analysisId: analysis._id,
         url,
         types,
@@ -37,7 +37,8 @@ export class AnalysisService {
       };
     } catch (err) {
       console.error('Error starting analysis:', err.message);
-      throw new Error('Failed to start analysis');
+      // Re-throw the original error to be caught by the global error handler
+      throw err;
     }
   }
 
@@ -51,7 +52,9 @@ export class AnalysisService {
       const analysis = await Analysis.findById(analysisId);
       
       if (!analysis) {
-        throw new Error('Analysis not found');
+        const err = new Error('Analysis not found');
+        err.status = 404;
+        throw err;
       }
       
       return {
@@ -77,11 +80,15 @@ export class AnalysisService {
       const analysis = await Analysis.findById(analysisId);
       
       if (!analysis) {
-        throw new Error('Analysis not found');
+        const err = new Error('Analysis not found');
+        err.status = 404;
+        throw err;
       }
       
       if (analysis.status !== 'completed') {
-        throw new Error(`Analysis not completed. Current status: ${analysis.status}`);
+        const err = new Error(`Analysis not completed. Current status: ${analysis.status}`);
+        err.status = 422; // Unprocessable Entity - a good status for this case
+        throw err;
       }
       
       return analysis.toObject();

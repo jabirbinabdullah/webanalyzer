@@ -1,20 +1,43 @@
-// A simple in-memory queue
-const queue = [];
+import { Queue, Worker } from 'bullmq';
+import { processAnalysisJob } from '../worker.js';
+import dotenv from 'dotenv';
 
-const add = (job) => {
-  queue.push(job);
+dotenv.config();
+
+const queueName = 'analysis';
+
+const redisConnection = {
+  host: process.env.REDIS_HOST || '127.0.0.1',
+  port: process.env.REDIS_PORT || 6379,
 };
 
-const getNext = () => {
-  return queue.shift();
-};
+// Create a new BullMQ queue
+export const analysisQueue = new Queue(queueName, {
+  connection: redisConnection,
+  defaultJobOptions: {
+    attempts: 3, // Retry failed jobs up to 3 times
+    backoff: {
+      type: 'exponential',
+      delay: 5000, // Wait 5s before first retry, then 10s, 20s
+    },
+  },
+});
 
-const getQueue = () => {
-    return queue;
+// Create a worker to process jobs from the queue
+if (process.env.NODE_ENV !== 'test') {
+  console.log('Starting BullMQ worker...');
+  const worker = new Worker(queueName, async (job) => {
+    await processAnalysisJob(job.data);
+  }, { connection: redisConnection });
+
+  worker.on('completed', (job) => {
+    console.log(`Job ${job.id} has completed!`);
+  });
+
+  worker.on('failed', (job, err) => {
+    console.error(`Job ${job.id} has failed with ${err.message}`);
+  });
 }
 
-export default {
-  add,
-  getNext,
-  getQueue,
-};
+// Export the queue so it can be used to add jobs
+export default analysisQueue;

@@ -1,10 +1,26 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { validate } from '../middleware/validation.js';
-import { registerSchema } from '../middleware/validation.js';
+import { validate } from '../middleware/validation.js'; // Generic validation middleware
+import { z } from 'zod'; // Import Zod
 
 const router = express.Router();
+
+// Define Zod schemas for authentication
+const registerSchema = z.object({
+  body: z.object({
+    name: z.string().min(3, 'Name is required and must be at least 3 characters'),
+    email: z.string().email('Invalid email format'),
+    password: z.string().min(6, 'Password is required and must be at least 6 characters'),
+  }),
+});
+
+const loginSchema = z.object({
+  body: z.object({
+    email: z.string().email('Invalid email format'),
+    password: z.string().min(1, 'Password is required'), // Password might be short for login check
+  }),
+});
 
 // Function to generate JWT
 function generateToken(user) {
@@ -50,12 +66,8 @@ router.post('/register', validate(registerSchema), async (req, res) => {
  * @desc    Authenticate user and get token
  * @access  Public
  */
-router.post('/login', async (req, res) => {
+router.post('/login', validate(loginSchema), async (req, res) => {
   const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Please provide email and password' });
-  }
 
   try {
     const user = await User.findOne({ email });
