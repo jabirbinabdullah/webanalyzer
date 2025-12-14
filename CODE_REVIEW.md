@@ -212,3 +212,49 @@ Before running the application:
 **Issues found were integration bugs** from incomplete refactoring, not fundamental design flaws. All critical bugs have been fixed.
 
 **Ready for testing:** Application should now work correctly with significant performance improvements.
+
+---
+
+## 📌 Future Development Backlog (Saved)
+
+### Production Readiness & Monitoring (current focus)
+- Add detailed health endpoint: browser (connected, pages), Redis (pending/failed), Mongo status, memory usage
+- Expose BullMQ dashboard (Bull Board) at `/admin/queues` with auth guard
+- Browser resilience: auto-restart on crash, page timeout safeguards
+- Rate limiting per user tier (anon/auth/premium)
+- Harden error formats (consistent `{ error, message }`)
+
+### Near Term Features
+- User dashboard: history + portfolio in one view
+- Scheduled monitoring for saved sites with alerts on score drops
+- Analysis comparison endpoint and UI (side-by-side scores)
+
+### Longer Term
+- API keys + webhooks for analysis completion
+- Technology version detection + vuln hints
+- Scaling: split worker/API services; add caching layers
+
+---
+
+## 🛡️ Production Readiness Plan (actionable)
+
+1) Health Monitoring (add route)
+- `/api/health/detailed` returning browser, Redis, Mongo, queue metrics, memory
+- Alert when browser disconnected or queue backlogs spike
+
+2) Queue Observability
+- Integrate Bull Board for BullMQ queues at `/admin/queues`
+- Protect with basic auth or JWT
+
+3) Stability Guards
+- Page-level timeouts and auto-close
+- Browser crash detection with relaunch
+- Cap concurrent pages if needed
+
+4) Config & Secrets
+- Ensure `.env` has strong `JWT_SECRET`, Redis creds, Mongo URI
+- Document production setup (Redis, Mongo, Node version)
+
+5) Tests & Smoke Checks
+- Add smoke tests for health endpoint, queue stats, auth-required routes
+- Manual checklist: single Chrome instance, queue retries, PDF export, protected routes
