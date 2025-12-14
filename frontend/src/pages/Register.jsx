@@ -6,7 +6,7 @@ export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
+  const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { register } = useContext(AuthContext);
@@ -14,12 +14,18 @@ export default function Register() {
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
+    setErrors([]);
     try {
       await register(name, email, password);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Registration failed');
+      if (err.response?.data?.errors) {
+        setErrors(err.response.data.errors);
+      } else if (err.response?.data?.error) {
+        setErrors([{ message: err.response.data.error }]);
+      } else {
+        setErrors([{ message: err.message || 'Registration failed' }]);
+      }
     } finally {
       setLoading(false);
     }
@@ -51,13 +57,20 @@ export default function Register() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
+          minLength="8"
           className="input"
         />
         <button type="submit" disabled={loading} className="btn">
           {loading ? 'Registering...' : 'Register'}
         </button>
       </form>
-      {error && <p className="error">{error}</p>}
+      {errors.length > 0 && (
+        <div className="error">
+          {errors.map((error, index) => (
+            <p key={index}>{error.message}</p>
+          ))}
+        </div>
+      )}
       <p>
         Already have an account? <Link to="/login">Login</Link>
       </p>

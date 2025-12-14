@@ -6,7 +6,7 @@ const api = axios.create({
   baseURL: API_BASE,
 });
 
-// Add a request interceptor to include the token in headers
+// Add request interceptor for auth token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -17,15 +17,59 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+// Add a response interceptor to standardize error handling
+api.interceptors.response.use(
+  (response) => response, // Directly return successful responses
+  (error) => {
+    // Extract a meaningful error message from the backend response
+    const message =
+      error.response?.data?.error?.message || // Backend's structured error
+      error.response?.data?.error || // Sometimes just a string
+      error.message; // Fallback to the default error message
 
-export async function analyzeUrl(url) {
-  const res = await api.get(`/api/analyze`, { params: { url } });
+    // Reject a new promise with the simplified message
+    return Promise.reject(new Error(message));
+  }
+);
+
+
+export async function analyzeUrl(url, types = []) {
+  const res = await api.get(`/api/analyze`, {
+    params: {
+      url,
+      types, // Axios will serialize the array into multiple `types=` query params
+    },
+    // To handle arrays in query parameters correctly if needed
+    paramsSerializer: params => {
+      const searchParams = new URLSearchParams();
+      for (const key in params) {
+        if (Array.isArray(params[key])) {
+          for (const val of params[key]) {
+            searchParams.append(key, val);
+          }
+        } else {
+          searchParams.append(key, params[key]);
+        }
+      }
+      return searchParams.toString();
+    }
+  });
   return res.data;
 }
 
 export async function getAnalysesForUrl(url) {
   const res = await api.get(`/api/analyses`, { params: { url } });
   return res.data;
+}
+
+export async function getAnalysisStatus(analysisId) {
+  const res = await api.get(`/api/analysis/${analysisId}/status`);
+  return res.data;
+}
+
+export async function getAnalysis(analysisId) {
+    const res = await api.get(`/api/analysis/${analysisId}`);
+    return res.data;
 }
 
 export async function exportPdf(analysisId) {
