@@ -1,23 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { getAnalysesForUrl } from '../services/api';
+import { getAnalyses } from '../services/api';
 
 export default function History() {
-  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [analyses, setAnalyses] = useState([]);
   const [error, setError] = useState(null);
 
-  const url = searchParams.get('url');
-
   useEffect(() => {
-    if (!url) return;
-
     async function fetchHistory() {
       setLoading(true);
       setError(null);
       try {
-        const res = await getAnalysesForUrl(url);
+        const res = await getAnalyses();
         setAnalyses(res);
       } catch (err) {
         setError(err.message || 'Failed to fetch history');
@@ -27,15 +21,11 @@ export default function History() {
     }
 
     fetchHistory();
-  }, [url]);
-
-  if (!url) {
-    return <div>No URL specified. Please go back and analyze a URL to see its history.</div>;
-  }
+  }, []);
 
   return (
     <div className="history">
-      <h2>Analysis History for {url}</h2>
+      <h2>Your Analysis History</h2>
 
       {loading && <div>Loading...</div>}
       {error && <div className="error">{error}</div>}
@@ -44,14 +34,24 @@ export default function History() {
         <div className="history-list">
           {analyses.map((analysis) => (
             <div key={analysis._id} className="history-item">
-              <h3>{new Date(analysis.createdAt).toLocaleString()}</h3>
-              <p><strong>Title:</strong> {analysis.title || '-'}</p>
-              <p><strong>Technologies:</strong> {analysis.technologies.map(t => t.name).join(', ') || 'None detected'}</p>
+              <h3>{analysis.url}</h3>
+              <p>
+                <strong>Analyzed on:</strong>{' '}
+                {new Date(analysis.createdAt).toLocaleString()}
+              </p>
+              <p>
+                <strong>Title:</strong> {analysis.title || '-'}
+              </p>
+              <p>
+                <strong>Technologies:</strong>{' '}
+                {analysis.technologies.map((t) => t.name).join(', ') ||
+                  'None detected'}
+              </p>
             </div>
           ))}
         </div>
       ) : (
-        !loading && <div>No history found for this URL.</div>
+        !loading && <div>You have no analysis history.</div>
       )}
     </div>
   );

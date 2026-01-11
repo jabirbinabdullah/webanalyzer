@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
       try {
         setUser(JSON.parse(userString));
       } catch (error) {
-        console.error("Failed to parse user from localStorage", error);
+        console.error('Failed to parse user from localStorage', error);
         logout();
       }
     }
@@ -45,7 +45,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, register, loading }}>
+    <AuthContext.Provider
+      value={{ user, token, login, logout, register, loading }}
+    >
       {children}
     </AuthContext.Provider>
   );

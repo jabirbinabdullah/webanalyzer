@@ -75,13 +75,14 @@ Each task below should be created as a separate issue.
   - **Description:** Generate PDF/HTML reports with screenshots, metrics, detections.
     - **Sub-task:** Add "Print Report" button to frontend.
     - **Status:** Completed
-  - **Status:** Open
+  - **Status:** Completed
 - **Task:** Test Coverage & CI
   - **Description:** Expand unit/integration tests; set up CI pipeline.
     - **Sub-task:** Expand `techScanner` tests for better coverage.
     - **Status:** Completed
     - **Sub-task:** Add CI workflow (GitHub Actions).
     - **Status:** Completed
+  - **Status:** Partially Completed
 - **Task:** Monorepo Setup with `concurrently`
   - **Description:** Create a root `package.json` with a `dev` script to run frontend and backend concurrently.
   - **Status:** Completed

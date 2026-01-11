@@ -1,82 +1,29 @@
 import express from 'express';
 import cors from 'cors';
-import puppeteer from 'puppeteer';
-import { load } from 'cheerio';
-import axios from 'axios';
-import { AxePuppeteer } from 'axe-puppeteer';
-import { detectTechnologies } from './src/scanners/techScanner.js';
-import analyzeSEO from './src/scanners/seoScanner.js';
-import rateLimit from 'express-rate-limit';
+import dotenv from 'dotenv';
+
+// Load environment variables first
+dotenv.config();
+
 import connectDB from './src/config/db.js';
-import Analysis from './src/models/Analysis.js';
-import { promises as dnsPromises } from 'dns';
-import net from 'net';
+import { errorHandler } from './src/middleware/errorHandler.js';
+import authRouter from './src/routes/auth.js';
+import portfolioRouter from './src/routes/portfolio.js';
+import analysisRouter from './src/routes/analysisRoutes.js'; // Import the new analysis router
+import apiKeyRouter from './src/routes/apiKey.js';
 
-// SSRF / IP validation helpers
-function ipv4ToInt(ip) {
-  const parts = ip.split('.').map(Number);
-  if (parts.length !== 4 || parts.some(p => Number.isNaN(p))) return null;
-  return ((parts[0] << 24) >>> 0) + (parts[1] << 16) + (parts[2] << 8) + parts[3];
-}
+import swaggerUi from 'swagger-ui-express';
+import swaggerSpec from './src/config/swagger.js';
 
-function isPrivateIPv4(ip) {
-  const i = ipv4ToInt(ip);
-  if (i === null) return false;
-  // 10.0.0.0/8
-  if (i >= ipv4ToInt('10.0.0.0') && i <= ipv4ToInt('10.255.255.255')) return true;
-  // 172.16.0.0/12
-  if (i >= ipv4ToInt('172.16.0.0') && i <= ipv4ToInt('172.31.255.255')) return true;
-  // 192.168.0.0/16
-  if (i >= ipv4ToInt('192.168.0.0') && i <= ipv4ToInt('192.168.255.255')) return true;
-  // 127.0.0.0/8 loopback
-  if (i >= ipv4ToInt('127.0.0.0') && i <= ipv4ToInt('127.255.255.255')) return true;
-  // link-local 169.254.0.0/16
-  if (i >= ipv4ToInt('169.254.0.0') && i <= ipv4ToInt('169.254.255.255')) return true;
-  return false;
-}
-
-function isPrivateIPv6(ip) {
-  // simple checks: loopback ::1, fc00::/7 (unique local), fe80::/10 (link-local)
-  if (!ip) return false;
-  const norm = ip.toLowerCase();
-  if (norm === '::1') return true;
-  if (norm.startsWith('fc') || norm.startsWith('fd')) return true; // fc00::/7
-  if (norm.startsWith('fe80')) return true; // fe80::/10
-  return false;
-}
-
-async function isHostAllowed(hostname) {
-  // In test environment, skip network/DNS checks to allow mocked hosts
-  if (process.env.NODE_ENV === 'test') return true;
-  // If hostname is an IP literal, check directly
-  if (net.isIP(hostname)) {
-    if (net.isIP(hostname) === 4) {
-      return !isPrivateIPv4(hostname);
-    }
-    return !isPrivateIPv6(hostname);
-  }
-
-  // Resolve DNS to get IP addresses
-  try {
-    const records = await dnsPromises.lookup(hostname, { all: true });
-    for (const r of records) {
-      const addr = r.address;
-      if (net.isIP(addr) === 4) {
-        if (isPrivateIPv4(addr)) return false;
-      } else if (net.isIP(addr) === 6) {
-        if (isPrivateIPv6(addr)) return false;
-      }
-    }
-    return true;
-  } catch (err) {
-    // If DNS resolution fails, be conservative and disallow
-    return false;
-  }
-}
+import rateLimit from 'express-rate-limit';
+import { launchBrowser, closeBrowser } from './src/utils/browserManager.js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Connect to Database
 connectDB();
@@ -93,236 +40,37 @@ app.use('/api', apiLimiter);
 
 const PORT = process.env.PORT || 5000;
 
-import authRouter from './src/routes/auth.js';
-import portfolioRouter from './src/routes/portfolio.js';
-
 app.use('/api/auth', authRouter);
 app.use('/api/portfolio', portfolioRouter);
+app.use('/api/keys', apiKeyRouter);
+app.use('/api', analysisRouter); // Use the new analysis router
 
-app.get('/api/health', (req, res) => res.json({ ok: true }));
-
-/**
- * GET /api/analyze?url=
- * Returns basic metadata and technologies detected on the page.
- */
-app.get('/api/analyze', async (req, res) => {
-  const { url } = req.query;
-  if (!url) return res.status(400).json({ error: 'Missing url query parameter' });
-
-  try {
-    // Basic but effective URL validation. The URL constructor will throw
-    // a TypeError if the URL is malformed. We also check for a valid protocol.
-    const urlObject = new URL(url);
-    if (urlObject.protocol !== 'http:' && urlObject.protocol !== 'https:') {
-      throw new Error('Invalid protocol.');
-    }
-    // Reject excessively long URLs
-    if (url.length > 2000) {
-      return res.status(400).json({ error: 'URL too long.' });
-    }
-
-    // SSRF guard: ensure the hostname resolves to a public IP
-    const hostAllowed = await isHostAllowed(urlObject.hostname);
-    if (!hostAllowed) {
-      return res.status(400).json({ error: 'URL host resolves to a private or disallowed IP.' });
-    }
-  } catch (err) {
-    return res.status(400).json({ error: 'Invalid URL provided.' });
-  }
-
-  let browser = null;
-  try {
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-    const page = await browser.newPage();
-    const response = await page.goto(url, { waitUntil: 'networkidle2', timeout: 25000 });
-    const html = await page.content();
-    const headers = response.headers();
-    const $ = load(html);
-
-    const title = await page.title();
-    const description = await page.$eval('meta[name="description"]', el => el.content).catch(() => null);
-    const h1 = await page.$eval('h1', el => el.textContent).catch(() => null);
-
-    const pageMetrics = await page.metrics();
-    const performanceTiming = JSON.parse(await page.evaluate(() => JSON.stringify(performance.timing)));
-
-    const metrics = {
-      taskDuration: (pageMetrics.TaskDuration * 1000).toFixed(2), // ms
-      fcp: (performanceTiming.domContentLoadedEventEnd - performanceTiming.navigationStart).toFixed(2), // ms
-      load: (performanceTiming.loadEventEnd - performanceTiming.navigationStart).toFixed(2), // ms
-    };
-
-    const screenshot = await page.screenshot({ encoding: 'base64', type: 'jpeg', quality: 70 });
-
-    const detectedGlobals = {
-      hasChartJs: await page.evaluate(() => typeof window.Chart !== 'undefined'),
-    };
-
-    const technologies = detectTechnologies({ html, headers, $, detectedGlobals });
-
-    const accessibility = await new AxePuppeteer(page).analyze();
-
-    // SEO Checks (use analyzer module for richer checks)
-    const robotsTxtUrl = new URL('/robots.txt', url).href;
-    const robotsTxt = await axios.get(robotsTxtUrl).then(res => res.data).catch(() => null);
-
-    const wordCount = $('body').text().split(/\s+/).filter(Boolean).length;
-
-    let seoScannerResult = {};
-    try {
-      seoScannerResult = await analyzeSEO({ $, baseUrl: url, robotsTxtText: robotsTxt });
-    } catch (err) {
-      // Non-fatal: capture error into seo field so we can inspect later
-      seoScannerResult = { error: err.message };
-    }
-
-    const seo = {
-      description,
-      descriptionLength: description ? description.length : 0,
-      hasH1: !!h1,
-      wordCount,
-      robotsTxtStatus: robotsTxt ? 'found' : 'not_found',
-      ...seoScannerResult,
-    };
-
-    let lighthouseResult = null;
-    try {
-      // Load Lighthouse dynamically to avoid Jest attempting to parse ESM-only modules at test load time.
-      const lighthouseModule = await import('lighthouse');
-      const lighthouseFn = lighthouseModule && (lighthouseModule.default || lighthouseModule);
-
-      if (typeof lighthouseFn === 'function') {
-        const { lhr } = await lighthouseFn(url, {
-          port: (new URL(browser.wsEndpoint())).port, // Connect Lighthouse to the same Puppeteer instance
-          output: 'json',
-          // Only gather the categories we care about to keep report concise
-          onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo', 'pwa'],
-        }, undefined, page); // Pass page to Lighthouse for existing session
-
-        lighthouseResult = {
-          performance: lhr.categories.performance.score * 100,
-          accessibility: lhr.categories.accessibility.score * 100,
-          bestPractices: lhr.categories['best-practices'].score * 100,
-          seo: lhr.categories.seo.score * 100,
-          pwa: lhr.categories.pwa.score * 100,
-        };
-      } else {
-        lighthouseResult = { error: 'Lighthouse module could not be loaded as a function.' };
-      }
-    } catch (err) {
-      console.error('Lighthouse audit failed:', err.message);
-      lighthouseResult = { error: err.message };
-    }
-
-    const analysisData = {
-      url,
-      title,
-      description,
-      h1,
-      technologies,
-      metrics,
-      screenshot,
-      accessibility: {
-        violations: accessibility.violations,
-      },
-      seo,
-      lighthouse: lighthouseResult,
-    };
-
-    // Save the analysis to the database
-    const analysis = new Analysis(analysisData);
-    await analysis.save();
-
-    res.json(analysis);
-  } catch (err) {
-    console.error('analyze error', err.message);
-    res.status(500).json({ error: 'Failed to fetch or analyze the URL', details: err.message });
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
-  }
-});
-
-/**
- * GET /api/analyses?url=
- * Returns all historical analyses for a given URL.
- */
-import { protect } from './src/middleware/auth.js';
-import { getReportHTML } from './src/report-template.js';
-
-app.get('/api/analyses', protect, async (req, res) => {
-  const { url } = req.query;
-  if (!url) {
-    return res.status(400).json({ error: 'Missing url query parameter' });
-  }
-
-  try {
-    const analyses = await Analysis.find({ url }).sort({ createdAt: -1 });
-    res.json(analyses);
-  } catch (err) {
-    console.error('Error fetching analyses:', err.message);
-    res.status(500).json({ error: 'Failed to retrieve analyses' });
-  }
-});
-
-/**
- * POST /api/report
- * Generates a PDF report for a given analysis ID.
- */
-app.post('/api/report', async (req, res) => {
-  const { analysisId } = req.body;
-  if (!analysisId) {
-    return res.status(400).json({ error: 'Missing analysisId in request body' });
-  }
-
-  let browser = null;
-  try {
-    const analysis = await Analysis.findById(analysisId);
-    if (!analysis) {
-      return res.status(404).json({ error: 'Analysis not found' });
-    }
-
-    const reportHtml = getReportHTML(analysis);
-
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-    const page = await browser.newPage();
-    await page.setContent(reportHtml, { waitUntil: 'networkidle0' });
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '40px',
-        right: '40px',
-        bottom: '40px',
-        left: '40px',
-      },
-    });
-
-    const filename = `WebAnalyzer-Report-${analysis.url.replace(/https?:\/\//, '').replace(/[\/\?#]/g, '_')}-${new Date(analysis.createdAt).toISOString().split('T')[0]}.pdf`;
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(pdfBuffer);
-  } catch (err) {
-    console.error('Error generating PDF report:', err.message);
-    res.status(500).json({ error: 'Failed to generate PDF report' });
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
-  }
-});
-
+// Global error handler (must be last)
+app.use(errorHandler);
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => console.log(`Backend listening on http://localhost:${PORT}`));
+  // Launch the browser and then start the server
+  launchBrowser().then(() => {
+    const server = app.listen(PORT, () => {
+      console.log(`Backend listening on http://localhost:${PORT}`);
+      console.log(`API Docs available on http://localhost:${PORT}/api-docs`);
+    });
+
+    // Graceful shutdown
+    const shutdown = async (signal) => {
+      console.log(`\n${signal} received. Shutting down gracefully...`);
+      // Close browser
+      await closeBrowser();
+      // Stop server
+      server.close(() => {
+        console.log('HTTP server closed.');
+        process.exit(0);
+      });
+    };
+
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+  });
 }
 
 export default app;
