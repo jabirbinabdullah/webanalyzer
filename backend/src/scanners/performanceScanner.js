@@ -1,6 +1,9 @@
 import lighthouse from 'lighthouse';
 import { getBrowser } from '../utils/browserManager.js';
-import { getCachedPerformance, cachePerformance } from '../models/PerformanceCache.js';
+import {
+  getCachedPerformance,
+  cachePerformance,
+} from '../models/PerformanceCache.js';
 
 /**
  * Analyze website performance using Lighthouse with caching
@@ -28,18 +31,24 @@ export const analyzePerformance = async (url, skipCache = false) => {
   try {
     const browser = getBrowser(); // Get the shared browser instance
 
-    const { lhr } = await lighthouse(url, {
-      port: (new URL(browser.wsEndpoint())).port,
-      output: 'json',
-      onlyCategories: ['performance'],
-      throttlingMethod: 'simulate',
-    }, null);
+    const { lhr } = await lighthouse(
+      url,
+      {
+        port: new URL(browser.wsEndpoint()).port,
+        output: 'json',
+        onlyCategories: ['performance'],
+        throttlingMethod: 'simulate',
+      },
+      null
+    );
 
     const performanceScore = lhr.categories.performance.score * 100;
     const audits = lhr.audits;
 
-    const extractMetric = (auditId) => audits[auditId] ? audits[auditId].displayValue : 'N/A';
-    const extractNumericMetric = (auditId) => audits[auditId] ? audits[auditId].numericValue : null;
+    const extractMetric = (auditId) =>
+      audits[auditId] ? audits[auditId].displayValue : 'N/A';
+    const extractNumericMetric = (auditId) =>
+      audits[auditId] ? audits[auditId].numericValue : null;
 
     const metrics = {
       firstContentfulPaint: extractMetric('first-contentful-paint'),
@@ -55,12 +64,17 @@ export const analyzePerformance = async (url, skipCache = false) => {
         fcp: extractNumericMetric('first-contentful-paint'),
         si: extractNumericMetric('speed-index'),
         tti: extractNumericMetric('interactive'),
-      }
+      },
     };
 
     const recommendations = lhr.categories.performance.auditRefs
-      .filter(ref => ref.group === 'diagnostics' && ref.weight > 0 && audits[ref.id].score !== 1)
-      .map(ref => audits[ref.id].title);
+      .filter(
+        (ref) =>
+          ref.group === 'diagnostics' &&
+          ref.weight > 0 &&
+          audits[ref.id].score !== 1
+      )
+      .map((ref) => audits[ref.id].title);
 
     const result = {
       score: performanceScore,

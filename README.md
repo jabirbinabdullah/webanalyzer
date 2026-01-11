@@ -1,20 +1,32 @@
 (The file `c:\VSCProject\webanalyzer\README.md` exists, but is empty)
+
 # WebAnalyzer
 
 A comprehensive website analysis tool that detects technologies, audits accessibility, analyzes SEO, and measures performance. Built with Node.js/Express backend and React frontend.
 
 ## Features
 
-### Core Analysis Capabilities
-- **Technology Detection** - Identifies 20+ technologies (frameworks, libraries, servers, analytics, etc.)
-- **SEO Analysis** - Extracts meta descriptions, H1 tags, word count, structured data, robots.txt, sitemaps
-- **Accessibility Auditing** - Uses AxePuppeteer to find accessibility violations with severity levels
-- **Performance Metrics** - Runs Lighthouse audits for Performance, Accessibility, Best Practices, and SEO scores
-- **Screenshot Capture** - JPEG screenshots of analyzed websites
-- **SSRF Prevention** - Validates hosts to prevent analyzing private/internal IP addresses
-- **Rate Limiting** - 100 requests per 15 minutes per IP to prevent abuse
+### 🚀 Real-Time Analysis Engine
+- **Event-Driven Architecture**: Powered by **Socket.IO** and **Redis** for instant updates.
+- **Scalable Workers**: Background job processing with **BullMQ**.
+- **Headless Browser**: Deep scanning using **Puppeteer**.
+
+### 📊 Data Visualization & Dashboard
+- **Interactive Charts**: Performance trends and tech stack distribution using `recharts`.
+- **Competitor Comparison**: Side-by-side Radar Chart analysis.
+- **Portfolio Tracking**: Long-term history of your analyzed sites.
+
+### 📑 Reporting
+- **Professional PDF Exports**: Client-ready audits with cover pages and visual gauges.
+- **Detailed Metrics**: SEO, Accessibility, Best Practices, and CSV raw data export.
+
+### 🛠 Tech Stack
+- **Frontend**: React, Socket.IO Client, Recharts.
+- **Backend**: Node.js, Express, TypeScript, Redis Pub/Sub.
+- **Infrastructure**: Fully Dockerized (Compose, Multi-stage builds).
 
 ### User Features
+
 - **Persistent & Asynchronous Analysis** - Robust job queueing with BullMQ and Redis ensures analysis jobs are not lost on restart and are automatically retried on failure. The frontend polls for live progress updates.
 - **Recent Results** - View the latest 50 website analyses (auto-saved after each scan)
 - **Analysis History** - Track all analyses for a given URL over time
@@ -91,6 +103,7 @@ webanalyzer/
 ## Quick Start
 
 ### Prerequisites
+
 - Node.js 16+
 - MongoDB (local or Atlas)
 - Redis (local or remote)
@@ -131,6 +144,7 @@ Frontend will open on `http://localhost:3000`
 ## API Endpoints
 
 ### Analysis Endpoints
+
 - `GET /api/analyze?url=<URL>` - Start a new website analysis
 - `GET /api/analysis/:id` - Get analysis results
 - `GET /api/analysis/:id/status` - Get analysis status (pending/in-progress/completed/failed)
@@ -138,14 +152,17 @@ Frontend will open on `http://localhost:3000`
 - `GET /api/recent-results?limit=20` - Get recent analyses
 
 ### Report Endpoints
+
 - `POST /api/report` - Generate PDF report for an analysis
 
 ### Auth Endpoints
+
 - `POST /api/auth/register` - Register new user
 - `POST /api/auth/login` - Login user
 - `POST /api/auth/profile` - Get user profile (protected)
 
 ### Portfolio Endpoints
+
 - `POST /api/portfolio` - Add to portfolio (protected)
 - `GET /api/portfolio` - Get user portfolio (protected)
 - `DELETE /api/portfolio/:itemId` - Remove from portfolio (protected)
@@ -153,6 +170,7 @@ Frontend will open on `http://localhost:3000`
 ## Technology Stack
 
 ### Backend
+
 - **Express.js** - HTTP server framework
 - **MongoDB + Mongoose** - Database and ODM
 - **Puppeteer + Puppeteer-Extra** - Headless browser automation
@@ -164,6 +182,7 @@ Frontend will open on `http://localhost:3000`
 - **Jest** - Testing framework
 
 ### Frontend
+
 - **React 18** - UI framework
 - **React Router** - Client-side routing
 - **Axios** - API client
@@ -201,6 +220,7 @@ npm test
 ```
 
 **Current Test Results**: 32/33 tests passing (97%)
+
 - techScanner: 16/16 ✓
 - seoScanner: 16/16 ✓
 - analyzeEndpoint: 1/1 (expected Puppeteer limitation in test env)
@@ -214,16 +234,21 @@ npm test
 ## Troubleshooting
 
 ### MongoDB Connection Error
+
 ```
 Error: connect ECONNREFUSED
 ```
+
 Ensure MongoDB is running: `mongod` or use Atlas connection string in .env
 
 ### Lighthouse Audit Fails
+
 Some Lighthouse categories may not be available in all versions. The system gracefully falls back to null values.
 
 ### Rate Limiting (429 Errors)
+
 The system includes realistic user-agent headers to avoid being blocked by sites. If still rate-limited:
+
 - Wait 15 minutes for rate limit reset
 - Or analyze different URLs
 
@@ -249,6 +274,7 @@ The system includes realistic user-agent headers to avoid being blocked by sites
 ## Contributing
 
 When adding new features:
+
 1. Follow the modular architecture pattern
 2. Add unit tests for new scanners/services
 3. Update this README with new features
@@ -258,5 +284,3 @@ When adding new features:
 ## License
 
 MIT
-
-

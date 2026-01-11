@@ -27,10 +27,10 @@ console.log('============================\n');
 
 const technologies = detectTechnologies({ html: sampleHtml });
 console.log(`Found ${technologies.length} technologies:\n`);
-technologies.forEach(tech => {
-    console.log(`✓ ${tech.name}`);
-    console.log(`  Confidence: ${(tech.confidence * 100).toFixed(0)}%`);
-    console.log(`  Evidence: ${tech.evidence}\n`);
+technologies.forEach((tech) => {
+  console.log(`✓ ${tech.name}`);
+  console.log(`  Confidence: ${(tech.confidence * 100).toFixed(0)}%`);
+  console.log(`  Evidence: ${tech.evidence}\n`);
 });
 
 console.log('\nSample Technologies Detected:');
@@ -46,5 +46,7 @@ console.log('Basic SEO Metrics:');
 console.log(`- Title: ${title ? '✓' : '✗'} "${title}"`);
 console.log(`- Meta Description: ${description ? '✓' : '✗'} "${description}"`);
 console.log(`- H1 Tags: ${h1Count} found (${h1Count > 0 ? '✓' : '✗'})`);
-console.log(`\nImprovement: Config-driven tech detection now supports 20+ technologies`);
+console.log(
+  `\nImprovement: Config-driven tech detection now supports 20+ technologies`
+);
 console.log(`instead of the previous ~8 hardcoded ones.`);

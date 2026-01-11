@@ -3,7 +3,9 @@ import '../styles/performance.css';
 
 export default function PerformanceAnalysis({ result }) {
   if (!result) {
-    return <div className="performance-container">No performance data available</div>;
+    return (
+      <div className="performance-container">No performance data available</div>
+    );
   }
 
   const getScoreColor = (score) => {
@@ -24,7 +26,9 @@ export default function PerformanceAnalysis({ result }) {
       <div className="performance-score-card">
         <div className="score-display">
           <div className={`score-circle ${getScoreColor(result.score)}`}>
-            <div className="score-value">{result.score !== null ? Math.round(result.score) : 'N/A'}</div>
+            <div className="score-value">
+              {result.score !== null ? Math.round(result.score) : 'N/A'}
+            </div>
           </div>
           <div className="score-label">Overall Performance Score</div>
         </div>
@@ -36,17 +40,23 @@ export default function PerformanceAnalysis({ result }) {
         <div className="vitals-grid">
           <div className="vital-card">
             <div className="vital-name">Largest Contentful Paint</div>
-            <div className="vital-value">{result.metrics?.largestContentfulPaint || 'N/A'}</div>
+            <div className="vital-value">
+              {result.metrics?.largestContentfulPaint || 'N/A'}
+            </div>
             <div className="vital-hint">Slower than 4s = poor</div>
           </div>
           <div className="vital-card">
             <div className="vital-name">Cumulative Layout Shift</div>
-            <div className="vital-value">{result.metrics?.cumulativeLayoutShift || 'N/A'}</div>
+            <div className="vital-value">
+              {result.metrics?.cumulativeLayoutShift || 'N/A'}
+            </div>
             <div className="vital-hint">Higher than 0.25 = poor</div>
           </div>
           <div className="vital-card">
             <div className="vital-name">First Input Delay</div>
-            <div className="vital-value">{result.metrics?.totalBlockingTime || 'N/A'}</div>
+            <div className="vital-value">
+              {result.metrics?.totalBlockingTime || 'N/A'}
+            </div>
             <div className="vital-hint">Slower than 100ms = poor</div>
           </div>
         </div>
@@ -58,15 +68,21 @@ export default function PerformanceAnalysis({ result }) {
         <div className="metrics-list">
           <div className="metric-row">
             <span className="metric-name">First Contentful Paint</span>
-            <span className="metric-value">{result.metrics?.firstContentfulPaint || 'N/A'}</span>
+            <span className="metric-value">
+              {result.metrics?.firstContentfulPaint || 'N/A'}
+            </span>
           </div>
           <div className="metric-row">
             <span className="metric-name">Speed Index</span>
-            <span className="metric-value">{result.metrics?.speedIndex || 'N/A'}</span>
+            <span className="metric-value">
+              {result.metrics?.speedIndex || 'N/A'}
+            </span>
           </div>
           <div className="metric-row">
             <span className="metric-name">Time to Interactive</span>
-            <span className="metric-value">{result.metrics?.interactive || 'N/A'}</span>
+            <span className="metric-value">
+              {result.metrics?.interactive || 'N/A'}
+            </span>
           </div>
         </div>
       </div>
@@ -80,7 +96,9 @@ export default function PerformanceAnalysis({ result }) {
               <li key={idx}>{rec}</li>
             ))}
             {result.recommendations.length > 5 && (
-              <li className="more-items">+{result.recommendations.length - 5} more recommendations</li>
+              <li className="more-items">
+                +{result.recommendations.length - 5} more recommendations
+              </li>
             )}
           </ul>
         </div>

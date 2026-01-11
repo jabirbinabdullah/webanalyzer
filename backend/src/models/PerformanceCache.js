@@ -22,7 +22,10 @@ const performanceCacheSchema = new mongoose.Schema({
  * PerformanceCache Model
  * Stores Lighthouse analysis results with 24-hour auto-expiry
  */
-const PerformanceCache = mongoose.model('PerformanceCache', performanceCacheSchema);
+const PerformanceCache = mongoose.model(
+  'PerformanceCache',
+  performanceCacheSchema
+);
 
 /**
  * Get cached performance result if available and fresh

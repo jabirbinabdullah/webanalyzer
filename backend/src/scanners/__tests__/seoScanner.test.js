@@ -34,7 +34,9 @@ describe('seoScanner analyzeSEO', () => {
     const res = await analyzeSEO({ $, baseUrl: 'https://example.com' });
     expect(res.jsonLd.count).toBe(1);
     expect(res.jsonLd.parsed.length).toBe(1);
-    expect(res.jsonLd.validations[0].issues).toContain('missing_schema_context_or_type');
+    expect(res.jsonLd.validations[0].issues).toContain(
+      'missing_schema_context_or_type'
+    );
   });
 
   test('schema validation flags missing required fields for known types', async () => {
@@ -46,11 +48,10 @@ describe('seoScanner analyzeSEO', () => {
     const res = await analyzeSEO({ $, baseUrl: 'https://example.com' });
     // For WebSite, schema requires @context and optionally url; valid but may lack url
     expect(res.jsonLd.schemaValidation.length).toBeGreaterThanOrEqual(1);
-    // If ajv ran, check that entries exist; otherwise ensure no crash
-    if (res.jsonLd.schemaValidation && res.jsonLd.schemaValidation.length > 0) {
-      const hasWebSite = res.jsonLd.schemaValidation.some(e => e.matches && e.matches.includes('WebSite'));
-      expect(hasWebSite).toBe(true);
-    }
+    const hasWebSite = res.jsonLd.schemaValidation.some(
+      (e) => e.matches && e.matches.includes('WebSite')
+    );
+    expect(hasWebSite).toBe(true);
   });
 
   test('schema validation recognizes Organization and BreadcrumbList', async () => {
@@ -62,8 +63,12 @@ describe('seoScanner analyzeSEO', () => {
     const res = await analyzeSEO({ $, baseUrl: 'https://example.com' });
     expect(res.jsonLd.count).toBe(2);
     // ensure schemaValidation entries include the type matches
-    const flatMatches = (res.jsonLd.schemaValidation || []).flatMap(e => e.matches || []);
-    expect(flatMatches).toEqual(expect.arrayContaining(['Organization','BreadcrumbList']));
+    const flatMatches = (res.jsonLd.schemaValidation || []).flatMap(
+      (e) => e.matches || []
+    );
+    expect(flatMatches).toEqual(
+      expect.arrayContaining(['Organization', 'BreadcrumbList'])
+    );
   });
 
   test('detects hreflang duplicates', async () => {
@@ -93,7 +98,8 @@ describe('seoScanner analyzeSEO', () => {
   });
 
   test('canonical on different host is flagged', async () => {
-    const html = '<head><link rel="canonical" href="https://other.example/canonical" /></head>';
+    const html =
+      '<head><link rel="canonical" href="https://other.example/canonical" /></head>';
     const $ = load(html);
     const res = await analyzeSEO({ $, baseUrl: 'https://example.com/page' });
     expect(res.canonical.raw).toBe('https://other.example/canonical');
@@ -110,14 +116,19 @@ describe('seoScanner analyzeSEO', () => {
     expect(res.jsonLd.count).toBe(2);
     const sv = res.jsonLd.schemaValidation || [];
     // Find product entry and recipe entry
-    const productEntry = sv.find(e => (e.matches || []).includes('Product'));
-    const recipeEntry = sv.find(e => (e.matches || []).includes('Recipe'));
+    const productEntry = sv.find((e) => (e.matches || []).includes('Product'));
+    const recipeEntry = sv.find((e) => (e.matches || []).includes('Recipe'));
     // Product should have been matched but report errors because 'name' was missing
     expect(productEntry).toBeDefined();
-    expect(productEntry.errors && productEntry.errors.length).toBeGreaterThanOrEqual(1);
+    expect(
+      productEntry.errors && productEntry.errors.length
+    ).toBeGreaterThanOrEqual(1);
     // Recipe should be matched and have no AJV errors
     expect(recipeEntry).toBeDefined();
-    const recipeErrors = recipeEntry.errors && recipeEntry.errors.length ? recipeEntry.errors.flatMap(x => x.errors || []) : [];
+    const recipeErrors =
+      recipeEntry.errors && recipeEntry.errors.length
+        ? recipeEntry.errors.flatMap((x) => x.errors || [])
+        : [];
     expect(recipeErrors.length).toBe(0);
   });
 
@@ -130,19 +141,37 @@ describe('seoScanner analyzeSEO', () => {
     const $ = load(html);
     const res = await analyzeSEO({ $, baseUrl: 'https://example.com' });
     expect(res.jsonLd.count).toBe(3);
-    const flatMatches = (res.jsonLd.schemaValidation || []).flatMap(e => e.matches || []);
+    const flatMatches = (res.jsonLd.schemaValidation || []).flatMap(
+      (e) => e.matches || []
+    );
     // Offer should be matched and report errors (missing price)
-    expect(flatMatches).toEqual(expect.arrayContaining(['Offer','AggregateRating','Person']));
-    const offerEntry = (res.jsonLd.schemaValidation || []).find(e => (e.matches||[]).includes('Offer'));
+    expect(flatMatches).toEqual(
+      expect.arrayContaining(['Offer', 'AggregateRating', 'Person'])
+    );
+    const offerEntry = (res.jsonLd.schemaValidation || []).find((e) =>
+      (e.matches || []).includes('Offer')
+    );
     expect(offerEntry).toBeDefined();
-    expect(offerEntry.errors && offerEntry.errors.length).toBeGreaterThanOrEqual(1);
-    const aggEntry = (res.jsonLd.schemaValidation || []).find(e => (e.matches||[]).includes('AggregateRating'));
+    expect(
+      offerEntry.errors && offerEntry.errors.length
+    ).toBeGreaterThanOrEqual(1);
+    const aggEntry = (res.jsonLd.schemaValidation || []).find((e) =>
+      (e.matches || []).includes('AggregateRating')
+    );
     expect(aggEntry).toBeDefined();
-    const aggErrors = aggEntry.errors && aggEntry.errors.length ? aggEntry.errors.flatMap(x => x.errors || []) : [];
+    const aggErrors =
+      aggEntry.errors && aggEntry.errors.length
+        ? aggEntry.errors.flatMap((x) => x.errors || [])
+        : [];
     expect(aggErrors.length).toBe(0);
-    const personEntry = (res.jsonLd.schemaValidation || []).find(e => (e.matches||[]).includes('Person'));
+    const personEntry = (res.jsonLd.schemaValidation || []).find((e) =>
+      (e.matches || []).includes('Person')
+    );
     expect(personEntry).toBeDefined();
-    const personErrors = personEntry.errors && personEntry.errors.length ? personEntry.errors.flatMap(x => x.errors || []) : [];
+    const personErrors =
+      personEntry.errors && personEntry.errors.length
+        ? personEntry.errors.flatMap((x) => x.errors || [])
+        : [];
     expect(personErrors.length).toBe(0);
   });
 });

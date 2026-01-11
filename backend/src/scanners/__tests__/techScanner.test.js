@@ -1,4 +1,4 @@
-import { detectTechnologies } from './techScanner.js';
+import { detectTechnologies } from '../techScanner.js';
 import { load } from 'cheerio';
 
 describe('detectTechnologies', () => {
@@ -9,7 +9,8 @@ describe('detectTechnologies', () => {
   });
 
   it('should detect React from script tags', () => {
-    const html = '<html><head></head><body><script src="react.min.js"></script></body></html>';
+    const html =
+      '<html><head></head><body><script src="react.min.js"></script></body></html>';
     const technologies = detectTechnologies({ html });
     expect(technologies).toContainEqual(
       expect.objectContaining({
@@ -21,7 +22,8 @@ describe('detectTechnologies', () => {
   });
 
   it('should detect React from devtools hook', () => {
-    const html = '<html><body><script>var __REACT_DEVTOOLS_GLOBAL_HOOK__ = {};</script></body></html>';
+    const html =
+      '<html><body><script>var __REACT_DEVTOOLS_GLOBAL_HOOK__ = {};</script></body></html>';
     const technologies = detectTechnologies({ html });
     expect(technologies).toContainEqual(
       expect.objectContaining({
@@ -68,7 +70,8 @@ describe('detectTechnologies', () => {
   });
 
   it('should detect Vue.js from devtools hook', () => {
-    const html = '<html><body><script>var __VUE_DEVTOOLS_GLOBAL_HOOK__ = {};</script></body></html>';
+    const html =
+      '<html><body><script>var __VUE_DEVTOOLS_GLOBAL_HOOK__ = {};</script></body></html>';
     const technologies = detectTechnologies({ html });
     expect(technologies).toContainEqual(
       expect.objectContaining({
@@ -80,7 +83,8 @@ describe('detectTechnologies', () => {
   });
 
   it('should detect jQuery from script tags', () => {
-    const html = '<html><head></head><body><script src="jquery.js"></script></body></html>';
+    const html =
+      '<html><head></head><body><script src="jquery.js"></script></body></html>';
     const technologies = detectTechnologies({ html });
     expect(technologies).toContainEqual(
       expect.objectContaining({
@@ -91,7 +95,8 @@ describe('detectTechnologies', () => {
   });
 
   it('should detect jQuery from inline usage', () => {
-    const html = '<html><body><script>jQuery(document).ready()</script></body></html>';
+    const html =
+      '<html><body><script>jQuery(document).ready()</script></body></html>';
     const technologies = detectTechnologies({ html });
     expect(technologies).toContainEqual(
       expect.objectContaining({
@@ -103,7 +108,8 @@ describe('detectTechnologies', () => {
   });
 
   it('should detect WordPress from wp-content path', () => {
-    const html = '<html><head></head><body><link rel="stylesheet" href="/wp-content/themes/my-theme/style.css"></body></html>';
+    const html =
+      '<html><head></head><body><link rel="stylesheet" href="/wp-content/themes/my-theme/style.css"></body></html>';
     const technologies = detectTechnologies({ html });
     expect(technologies).toContainEqual(
       expect.objectContaining({
@@ -114,7 +120,8 @@ describe('detectTechnologies', () => {
   });
 
   it('should detect Drupal from patterns in HTML', () => {
-    const html = '<html><body><script>Drupal.settings = {};</script></body></html>';
+    const html =
+      '<html><body><script>Drupal.settings = {};</script></body></html>';
     const technologies = detectTechnologies({ html });
     expect(technologies).toContainEqual(
       expect.objectContaining({
@@ -125,12 +132,17 @@ describe('detectTechnologies', () => {
   });
 
   it('should detect Google Analytics/Tag Manager', () => {
-    const html = '<html><body><script src="https://www.googletagmanager.com/gtm.js"></script></body></html>';
+    const html =
+      '<html><body><script src="https://www.googletagmanager.com/gtm.js"></script></body></html>';
     const technologies = detectTechnologies({ html });
     // GTM.js can match either Google Analytics or Google Tag Manager due to pattern overlap
-    expect(technologies.some(t => 
-      (t.name === 'Google Analytics' || t.name === 'Google Tag Manager') && t.confidence > 0
-    )).toBe(true);
+    expect(
+      technologies.some(
+        (t) =>
+          (t.name === 'Google Analytics' || t.name === 'Google Tag Manager') &&
+          t.confidence > 0
+      )
+    ).toBe(true);
   });
 
   it('should detect server from headers', () => {
@@ -178,7 +190,8 @@ describe('detectTechnologies', () => {
   });
 
   it('should detect multiple technologies', () => {
-    const html = '<html><head><script src="jquery.js"></script></head><body><div id="root"></div><script src="react.js"></script></body></html>';
+    const html =
+      '<html><head><script src="jquery.js"></script></head><body><div id="root"></div><script src="react.js"></script></body></html>';
     const headers = { 'x-powered-by': 'Express' };
     const technologies = detectTechnologies({ html, headers });
     expect(technologies.length).toBeGreaterThanOrEqual(2);
@@ -195,10 +208,8 @@ describe('detectTechnologies', () => {
     expect(technologies).toEqual([]);
   });
 
-    it('should handle null HTML input', () => {
+  it('should handle null HTML input', () => {
     const technologies = detectTechnologies({ html: null });
     expect(technologies).toEqual([]);
   });
-
-
 });

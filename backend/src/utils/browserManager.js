@@ -16,7 +16,9 @@ export const launchBrowser = async () => {
     return browserInstance;
   }
   try {
-    console.log('Launching a new shared Puppeteer browser instance with stealth...');
+    console.log(
+      'Launching a new shared Puppeteer browser instance with stealth...'
+    );
     browserInstance = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -36,8 +38,26 @@ export const launchBrowser = async () => {
  */
 export const getBrowser = () => {
   if (!browserInstance) {
-    throw new Error('Browser has not been launched. Please call launchBrowser() first.');
+    throw new Error(
+      'Browser has not been launched. Please call launchBrowser() first.'
+    );
   }
+
+  // Check if browser is still connected
+  try {
+    if (!browserInstance.wsEndpoint) {
+      console.warn('Browser lost connection, relaunching...');
+      browserInstance = null;
+      throw new Error('Browser connection lost');
+    }
+  } catch (e) {
+    console.warn('Browser health check failed:', e.message);
+    browserInstance = null;
+    throw new Error(
+      'Browser instance is corrupted. Please restart the server.'
+    );
+  }
+
   return browserInstance;
 };
 

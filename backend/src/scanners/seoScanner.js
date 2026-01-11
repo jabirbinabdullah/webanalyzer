@@ -19,8 +19,12 @@ export async function analyzeSEO({ $, baseUrl, robotsTxtText = null }) {
 
   // Canonical
   const canonicalRaw = $('link[rel="canonical"]').attr('href') || null;
-  const canonicalResolved = canonicalRaw ? resolveUrl(baseUrl, canonicalRaw) : null;
-  const sameHost = canonicalResolved ? new URL(canonicalResolved).hostname === new URL(baseUrl).hostname : null;
+  const canonicalResolved = canonicalRaw
+    ? resolveUrl(baseUrl, canonicalRaw)
+    : null;
+  const sameHost = canonicalResolved
+    ? new URL(canonicalResolved).hostname === new URL(baseUrl).hostname
+    : null;
   // canonical checks: presence, resolution, same host, protocol consistency, path similarity
   const canonicalIssues = [];
   if (!canonicalRaw) {
@@ -31,15 +35,23 @@ export async function analyzeSEO({ $, baseUrl, robotsTxtText = null }) {
     try {
       const baseU = new URL(baseUrl);
       const canU = new URL(canonicalResolved);
-      if (baseU.hostname !== canU.hostname) canonicalIssues.push('different_host');
-      if (baseU.protocol !== canU.protocol) canonicalIssues.push('different_protocol');
+      if (baseU.hostname !== canU.hostname)
+        canonicalIssues.push('different_host');
+      if (baseU.protocol !== canU.protocol)
+        canonicalIssues.push('different_protocol');
       // path similarity: warn if canonical path is root while page path is not (possible mismatch)
-      if (baseU.pathname !== '/' && canU.pathname === '/') canonicalIssues.push('path_mismatch');
+      if (baseU.pathname !== '/' && canU.pathname === '/')
+        canonicalIssues.push('path_mismatch');
     } catch (e) {
       canonicalIssues.push('resolve_error');
     }
   }
-  seo.canonical = { raw: canonicalRaw, resolved: canonicalResolved, sameHost, issues: canonicalIssues };
+  seo.canonical = {
+    raw: canonicalRaw,
+    resolved: canonicalResolved,
+    sameHost,
+    issues: canonicalIssues,
+  };
 
   // JSON-LD
   const jsonLdNodes = $('script[type="application/ld+json"]');
@@ -50,7 +62,11 @@ export async function analyzeSEO({ $, baseUrl, robotsTxtText = null }) {
       const parsed = JSON.parse(txt);
       seo.jsonLd.parsed.push(parsed);
     } catch (err) {
-      seo.jsonLd.errors.push({ index: i, message: err.message, raw: txt.slice(0, 200) });
+      seo.jsonLd.errors.push({
+        index: i,
+        message: err.message,
+        raw: txt.slice(0, 200),
+      });
     }
   });
 
@@ -69,7 +85,7 @@ export async function analyzeSEO({ $, baseUrl, robotsTxtText = null }) {
       }
     };
     if (Array.isArray(parsed)) {
-      parsed.forEach(p => checkObj(p));
+      parsed.forEach((p) => checkObj(p));
     } else {
       checkObj(parsed);
     }
@@ -86,141 +102,142 @@ export async function analyzeSEO({ $, baseUrl, robotsTxtText = null }) {
         properties: {
           '@context': { type: 'string' },
           '@type': { const: 'WebSite' },
-          'url': { type: 'string' }
+          url: { type: 'string' },
         },
-        required: ['@context']
+        required: ['@context'],
       },
       Article: {
         type: 'object',
         properties: {
           '@context': { type: 'string' },
           '@type': { const: 'Article' },
-          'headline': { type: 'string' },
-          'author': { type: 'object' }
+          headline: { type: 'string' },
+          author: { type: 'object' },
         },
-        required: ['@context', '@type', 'headline']
+        required: ['@context', '@type', 'headline'],
       },
       Organization: {
         type: 'object',
         properties: {
           '@context': { type: 'string' },
           '@type': { const: 'Organization' },
-          'name': { type: 'string' },
-          'url': { type: 'string' }
+          name: { type: 'string' },
+          url: { type: 'string' },
         },
-        required: ['@context', '@type', 'name']
+        required: ['@context', '@type', 'name'],
       },
       BreadcrumbList: {
         type: 'object',
         properties: {
           '@context': { type: 'string' },
           '@type': { const: 'BreadcrumbList' },
-          'itemListElement': { type: 'array' }
+          itemListElement: { type: 'array' },
         },
-        required: ['@context', '@type', 'itemListElement']
+        required: ['@context', '@type', 'itemListElement'],
       },
       Product: {
         type: 'object',
         properties: {
           '@context': { type: 'string' },
           '@type': { const: 'Product' },
-          'name': { type: 'string' },
-          'image': { type: ['string', 'array'] },
-          'description': { type: 'string' },
-          'brand': { type: ['string', 'object'] },
-          'aggregateRating': {
+          name: { type: 'string' },
+          image: { type: ['string', 'array'] },
+          description: { type: 'string' },
+          brand: { type: ['string', 'object'] },
+          aggregateRating: {
             type: 'object',
             properties: {
               '@type': { type: 'string' },
-              'ratingValue': { type: ['number', 'string'] },
-              'reviewCount': { type: ['number', 'string'] }
-            }
+              ratingValue: { type: ['number', 'string'] },
+              reviewCount: { type: ['number', 'string'] },
+            },
           },
-          'offers': {
+          offers: {
             type: 'object',
             properties: {
-              'price': { type: ['number', 'string'] },
-              'priceCurrency': { type: 'string' },
-              'availability': { type: 'string' }
-            }
-          }
+              price: { type: ['number', 'string'] },
+              priceCurrency: { type: 'string' },
+              availability: { type: 'string' },
+            },
+          },
         },
-        required: ['@context', '@type', 'name']
+        required: ['@context', '@type', 'name'],
       },
       Recipe: {
         type: 'object',
         properties: {
           '@context': { type: 'string' },
           '@type': { const: 'Recipe' },
-          'name': { type: 'string' },
-          'image': { type: ['string', 'array'] },
-          'author': { type: ['string', 'object'] },
-          'recipeIngredient': { type: 'array', items: { type: 'string' } },
-          'recipeInstructions': { 
+          name: { type: 'string' },
+          image: { type: ['string', 'array'] },
+          author: { type: ['string', 'object'] },
+          recipeIngredient: { type: 'array', items: { type: 'string' } },
+          recipeInstructions: {
             anyOf: [
               { type: 'string' },
-              { type: 'array', items: { type: ['string','object'] } }
-            ]
+              { type: 'array', items: { type: ['string', 'object'] } },
+            ],
           },
-          'cookTime': { type: 'string' },
-          'prepTime': { type: 'string' },
-          'totalTime': { type: 'string' },
-          'recipeYield': { type: ['string', 'number'] }
+          cookTime: { type: 'string' },
+          prepTime: { type: 'string' },
+          totalTime: { type: 'string' },
+          recipeYield: { type: ['string', 'number'] },
         },
-        required: ['@context', '@type', 'name', 'recipeIngredient']
-      }
-      ,
+        required: ['@context', '@type', 'name', 'recipeIngredient'],
+      },
       Offer: {
         type: 'object',
         properties: {
           '@context': { type: 'string' },
           '@type': { const: 'Offer' },
-          'price': { type: ['number', 'string'] },
-          'priceCurrency': { type: 'string' },
-          'availability': { type: 'string' },
-          'url': { type: 'string' },
-          'priceValidUntil': { type: 'string' },
-          'itemCondition': { type: 'string' }
+          price: { type: ['number', 'string'] },
+          priceCurrency: { type: 'string' },
+          availability: { type: 'string' },
+          url: { type: 'string' },
+          priceValidUntil: { type: 'string' },
+          itemCondition: { type: 'string' },
         },
-        required: ['@context', '@type', 'price', 'priceCurrency']
+        required: ['@context', '@type', 'price', 'priceCurrency'],
       },
       AggregateRating: {
         type: 'object',
         properties: {
           '@context': { type: 'string' },
           '@type': { const: 'AggregateRating' },
-          'ratingValue': { type: ['number', 'string'] },
-          'reviewCount': { type: ['number', 'string'] },
-          'bestRating': { type: ['number', 'string'] },
-          'worstRating': { type: ['number', 'string'] }
+          ratingValue: { type: ['number', 'string'] },
+          reviewCount: { type: ['number', 'string'] },
+          bestRating: { type: ['number', 'string'] },
+          worstRating: { type: ['number', 'string'] },
         },
-        required: ['@context', '@type', 'ratingValue']
+        required: ['@context', '@type', 'ratingValue'],
       },
       Person: {
         type: 'object',
         properties: {
           '@context': { type: 'string' },
           '@type': { const: 'Person' },
-          'name': { type: 'string' },
-          'url': { type: 'string' }
+          name: { type: 'string' },
+          url: { type: 'string' },
         },
-        required: ['@context', '@type', 'name']
+        required: ['@context', '@type', 'name'],
       },
       Review: {
         type: 'object',
         properties: {
           '@context': { type: 'string' },
           '@type': { const: 'Review' },
-          'reviewBody': { type: 'string' },
-          'author': { type: ['string', 'object'] },
-          'reviewRating': { type: 'object' }
+          reviewBody: { type: 'string' },
+          author: { type: ['string', 'object'] },
+          reviewRating: { type: 'object' },
         },
-        required: ['@context', '@type', 'reviewBody']
-      }
+        required: ['@context', '@type', 'reviewBody'],
+      },
     };
 
     // compile validators
-    const validators = Object.fromEntries(Object.entries(schemas).map(([k, s]) => [k, ajv.compile(s)]));
+    const validators = Object.fromEntries(
+      Object.entries(schemas).map(([k, s]) => [k, ajv.compile(s)])
+    );
 
     seo.jsonLd.schemaValidation = [];
     seo.jsonLd.parsed.forEach((parsed, idx) => {
@@ -253,7 +270,10 @@ export async function analyzeSEO({ $, baseUrl, robotsTxtText = null }) {
     if (val) hreflangs.push(val.toLowerCase());
   });
   const duplicates = hreflangs.filter((v, i, a) => a.indexOf(v) !== i);
-  seo.hreflang = { total: hreflangs.length, duplicates: Array.from(new Set(duplicates)) };
+  seo.hreflang = {
+    total: hreflangs.length,
+    duplicates: Array.from(new Set(duplicates)),
+  };
 
   // robots.txt sitemap discovery
   let sitemapUrl = null;
@@ -273,15 +293,22 @@ export async function analyzeSEO({ $, baseUrl, robotsTxtText = null }) {
     try {
       const resp = await axios.get(sitemapUrl, { timeout: 10000 });
       const xml = resp.data;
-      const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
+      const parser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: '',
+      });
       const parsed = parser.parse(xml);
       // urlset -> urls
       if (parsed.urlset && parsed.urlset.url) {
-        const urls = Array.isArray(parsed.urlset.url) ? parsed.urlset.url : [parsed.urlset.url];
+        const urls = Array.isArray(parsed.urlset.url)
+          ? parsed.urlset.url
+          : [parsed.urlset.url];
         seo.sitemap.parsed = true;
         seo.sitemap.urlCount = urls.length;
       } else if (parsed.sitemapindex && parsed.sitemapindex.sitemap) {
-        const maps = Array.isArray(parsed.sitemapindex.sitemap) ? parsed.sitemapindex.sitemap : [parsed.sitemapindex.sitemap];
+        const maps = Array.isArray(parsed.sitemapindex.sitemap)
+          ? parsed.sitemapindex.sitemap
+          : [parsed.sitemapindex.sitemap];
         seo.sitemap.parsed = true;
         seo.sitemap.urlCount = maps.length;
       } else {

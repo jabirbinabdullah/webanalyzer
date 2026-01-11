@@ -12,7 +12,11 @@ export default function Portfolio() {
         const data = await getPortfolio();
         setPortfolio(data);
       } catch (err) {
-        setError(err.response?.data?.error || err.message || 'Failed to fetch portfolio');
+        setError(
+          err.response?.data?.error ||
+            err.message ||
+            'Failed to fetch portfolio'
+        );
       } finally {
         setLoading(false);
       }
@@ -25,7 +29,9 @@ export default function Portfolio() {
       const updatedPortfolio = await deletePortfolioItem(itemId);
       setPortfolio(updatedPortfolio);
     } catch (err) {
-      alert('Failed to delete item. ' + (err.response?.data?.error || err.message));
+      alert(
+        'Failed to delete item. ' + (err.response?.data?.error || err.message)
+      );
     }
   };
 
@@ -48,16 +54,20 @@ export default function Portfolio() {
                 <strong>{item.name}</strong>
                 <p>{item.url}</p>
               </div>
-              <button onClick={() => handleDelete(item._id)} className="btn btn-danger">
+              <button
+                onClick={() => handleDelete(item._id)}
+                className="btn btn-danger"
+              >
                 Remove
               </button>
             </li>
           ))}
         </ul>
       ) : (
-        <p>Your portfolio is empty. Analyze a URL and add it to your portfolio.</p>
+        <p>
+          Your portfolio is empty. Analyze a URL and add it to your portfolio.
+        </p>
       )}
     </div>
   );
 }
-

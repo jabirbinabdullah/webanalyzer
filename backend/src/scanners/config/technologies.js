@@ -4,7 +4,7 @@
  */
 
 export const TECHNOLOGY_RULES = {
-  'React': {
+  React: {
     patterns: [/react(?:-dom)?(?:\.min)?\.js/i],
     globalVars: ['__REACT_DEVTOOLS_GLOBAL_HOOK__'],
     indicators: [/__reactInternalInstance/],
@@ -16,7 +16,7 @@ export const TECHNOLOGY_RULES = {
     indicators: [/__vue__/],
     confidence: 0.9,
   },
-  'Angular': {
+  Angular: {
     patterns: [/angular(?:\.min)?\.js|@angular/i],
     globalVars: ['angular'],
     indicators: [/ng-/],
@@ -34,13 +34,13 @@ export const TECHNOLOGY_RULES = {
     indicators: [/__NUXT__/],
     confidence: 0.9,
   },
-  'jQuery': {
+  jQuery: {
     patterns: [/jquery(?:\.min)?\.js/i],
     globalVars: ['jQuery', 'jQ'],
     indicators: [/jQuery\(/],
     confidence: 0.8,
   },
-  'Bootstrap': {
+  Bootstrap: {
     patterns: [/bootstrap(?:\.min)?\.css|bootstrap\.js/i],
     indicators: [/container-fluid|\.row|\.col-/],
     confidence: 0.85,
@@ -55,33 +55,33 @@ export const TECHNOLOGY_RULES = {
     indicators: [/mdl-|mdc-|mat-/],
     confidence: 0.8,
   },
-  'WordPress': {
+  WordPress: {
     patterns: [/wp-content|wp-includes|WordPress/i],
     indicators: [/wp-json|wordpress/],
     confidence: 0.95,
   },
-  'Drupal': {
+  Drupal: {
     patterns: [/Drupal\.settings|sites\/all\/modules/i],
     globalVars: ['Drupal'],
     confidence: 0.9,
   },
-  'Shopify': {
+  Shopify: {
     patterns: [/Shopify|shopify\.app/i],
     globalVars: ['Shopify'],
     indicators: [/\/cdn\/shop\/|Shopify\.theme/],
     confidence: 0.95,
   },
-  'Wix': {
+  Wix: {
     patterns: [/wix\.com|Wix\.setPagePermissions/i],
     globalVars: ['Wix'],
     confidence: 0.9,
   },
-  'TypeScript': {
+  TypeScript: {
     patterns: [/typescript|\.ts|tsconfig/i],
     indicators: [/interface\s+\w+|type\s+\w+=/],
     confidence: 0.7,
   },
-  'Webpack': {
+  Webpack: {
     patterns: [/webpack|__webpack_/i],
     globalVars: ['__webpack_require__'],
     confidence: 0.8,
@@ -101,17 +101,17 @@ export const TECHNOLOGY_RULES = {
     indicators: [/fbq\(/],
     confidence: 0.9,
   },
-  'Intercom': {
+  Intercom: {
     patterns: [/intercom\.io\/messages\.js|intercom-frame/i],
     globalVars: ['Intercom'],
     confidence: 0.9,
   },
-  'Hotjar': {
+  Hotjar: {
     patterns: [/hotjar\.com\/\?/i],
     globalVars: ['hj', 'hjSiteId'],
     confidence: 0.9,
   },
-  'Sentry': {
+  Sentry: {
     patterns: [/sentry\.io|Sentry\.init/i],
     globalVars: ['__SENTRY__'],
     confidence: 0.85,
@@ -123,7 +123,7 @@ export const TECHNOLOGY_RULES = {
  * Used to determine overall confidence based on multiple indicators
  */
 export const DETECTION_WEIGHTS = {
-  pattern: 0.4,      // Script/CSS detected via URL pattern
-  globalVar: 0.4,    // Global variable or object detected
-  indicator: 0.3,    // HTML indicator (class, attribute, etc.)
+  pattern: 0.4, // Script/CSS detected via URL pattern
+  globalVar: 0.4, // Global variable or object detected
+  indicator: 0.3, // HTML indicator (class, attribute, etc.)
 };

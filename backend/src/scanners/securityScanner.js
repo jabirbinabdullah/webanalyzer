@@ -1,86 +1,29 @@
-import axios from 'axios';
-import https from 'https';
+import { analyzeHeaders } from './headerScanner.js';
+import { analyzeVulnerabilities } from './vulnerabilityScanner.js';
 import { URL } from 'url';
 
 /**
- * Analyze website security headers and SSL/TLS configuration
+ * Analyze website security
  * @param {string} url - URL to analyze
- * @returns {Promise<Object>} Security analysis results including headers and SSL status
+ * @returns {Promise<Object>} Security analysis results
  */
 export const analyzeSecurity = async (url) => {
-  console.log(`Analyzing security headers for: ${url}`);
+  console.log(`Analyzing security for: ${url}`);
   try {
     const urlObj = new URL(url);
-    
-    // Check security headers
-    const response = await axios.head(url, {
-      validateStatus: (status) => true,
-      timeout: 10000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
-      }
-    });
-
-    const headers = response.headers;
-    const securityHeaders = {};
-    const missingHeaders = [];
-
-    // Check common security headers
-    const headerChecks = {
-      'Content-Security-Policy': 'content-security-policy',
-      'Strict-Transport-Security': 'strict-transport-security',
-      'X-Frame-Options': 'x-frame-options',
-      'X-Content-Type-Options': 'x-content-type-options',
-      'X-XSS-Protection': 'x-xss-protection',
-      'Referrer-Policy': 'referrer-policy',
-      'Permissions-Policy': 'permissions-policy',
-      'X-Permitted-Cross-Domain-Policies': 'x-permitted-cross-domain-policies',
-    };
-
-    Object.entries(headerChecks).forEach(([headerName, headerKey]) => {
-      const isPresent = !!headers[headerKey];
-      securityHeaders[headerName] = isPresent ? headers[headerKey] : 'Missing';
-      if (!isPresent) missingHeaders.push(headerName);
-    });
-
-    // Check HTTPS
     const isHTTPS = urlObj.protocol === 'https:';
 
-    // Check for information leakage
-    const leakageHeaders = {
-      'Server': headers['server'] ? 'Exposed' : 'Hidden',
-      'X-Powered-By': headers['x-powered-by'] ? 'Exposed' : 'Hidden',
-      'X-AspNet-Version': headers['x-aspnet-version'] ? 'Exposed' : 'Hidden',
-    };
+    const { securityHeaders, missingHeaders, leakageHeaders, corsStatus } =
+      await analyzeHeaders(url);
 
-    // Check for CORS misconfiguration
-    const corsStatus = headers['access-control-allow-origin'] 
-      ? headers['access-control-allow-origin'] === '*' 
-        ? 'Potentially Misconfigured (*)' 
-        : 'Configured: ' + headers['access-control-allow-origin']
-      : 'Not Set';
+    const vulnerabilities = await analyzeVulnerabilities(url);
 
-    // Check for redirect chains (up to 3 hops)
-    let finalUrl = url;
-    let redirectCount = 0;
-    try {
-      const headResponse = await axios.head(url, {
-        maxRedirects: 3,
-        validateStatus: (status) => true,
-        timeout: 10000,
-      });
-      finalUrl = headResponse.request?.res?.responseUrl || url;
-      redirectCount = headResponse.request?.path?.split('/').length - 1 || 0;
-    } catch (e) {
-      // Ignore redirect errors
-    }
-
-    // Calculate security score
     const securityScore = calculateSecurityScore(
       isHTTPS,
       missingHeaders.length,
       Object.keys(securityHeaders).length,
-      leakageHeaders
+      leakageHeaders,
+      vulnerabilities.length
     );
 
     console.log(`Security analysis for ${url} completed.`);
@@ -90,13 +33,14 @@ export const analyzeSecurity = async (url) => {
       leakageHeaders,
       corsStatus,
       isHTTPS,
-      redirectCount,
+      vulnerabilities,
       securityScore,
       recommendations: generateSecurityRecommendations(
         missingHeaders,
         isHTTPS,
         leakageHeaders,
-        corsStatus
+        corsStatus,
+        vulnerabilities.length
       ),
     };
   } catch (error) {
@@ -106,7 +50,9 @@ export const analyzeSecurity = async (url) => {
       message: error.message,
       headers: {},
       securityScore: 0,
-      recommendations: ['Unable to complete security analysis. Please check if URL is valid and accessible.'],
+      recommendations: [
+        'Unable to complete security analysis. Please check if URL is valid and accessible.',
+      ],
     };
   }
 };
@@ -117,9 +63,16 @@ export const analyzeSecurity = async (url) => {
  * @param {number} missingHeaderCount - Number of missing security headers
  * @param {number} totalHeaderCount - Total security headers checked
  * @param {Object} leakageHeaders - Server information leakage status
+ * @param {number} vulnerabilityCount - Number of vulnerabilities found
  * @returns {number} Security score (0-100)
  */
-function calculateSecurityScore(isHTTPS, missingHeaderCount, totalHeaderCount, leakageHeaders) {
+function calculateSecurityScore(
+  isHTTPS,
+  missingHeaderCount,
+  totalHeaderCount,
+  leakageHeaders,
+  vulnerabilityCount
+) {
   let score = 100;
 
   // HTTPS is critical
@@ -129,8 +82,13 @@ function calculateSecurityScore(isHTTPS, missingHeaderCount, totalHeaderCount, l
   score -= missingHeaderCount * 6;
 
   // Deduct for information leakage
-  const leakageCount = Object.values(leakageHeaders).filter(v => v === 'Exposed').length;
+  const leakageCount = Object.values(leakageHeaders).filter(
+    (v) => v === 'Exposed'
+  ).length;
   score -= leakageCount * 10;
+
+  // Deduct for vulnerabilities
+  score -= vulnerabilityCount * 5;
 
   return Math.max(0, Math.round(score));
 }
@@ -141,41 +99,70 @@ function calculateSecurityScore(isHTTPS, missingHeaderCount, totalHeaderCount, l
  * @param {boolean} isHTTPS - HTTPS status
  * @param {Object} leakageHeaders - Information leakage status
  * @param {string} corsStatus - CORS configuration status
+ * @param {number} vulnerabilityCount - Number of vulnerabilities found
  * @returns {Array} Array of recommendations
  */
-function generateSecurityRecommendations(missingHeaders, isHTTPS, leakageHeaders, corsStatus) {
+function generateSecurityRecommendations(
+  missingHeaders,
+  isHTTPS,
+  leakageHeaders,
+  corsStatus,
+  vulnerabilityCount
+) {
   const recommendations = [];
 
   if (!isHTTPS) {
-    recommendations.push('⚠️ CRITICAL: Enable HTTPS/TLS encryption (HTTP is insecure)');
+    recommendations.push(
+      '⚠️ CRITICAL: Enable HTTPS/TLS encryption (HTTP is insecure)'
+    );
+  }
+
+  if (vulnerabilityCount > 0) {
+    recommendations.push(
+      `🚨 ${vulnerabilityCount} vulnerable JavaScript libraries found. Update them to the latest version.`
+    );
   }
 
   if (missingHeaders.includes('Strict-Transport-Security')) {
-    recommendations.push('⚠️ Add HSTS header to force HTTPS and prevent downgrade attacks');
+    recommendations.push(
+      '⚠️ Add HSTS header to force HTTPS and prevent downgrade attacks'
+    );
   }
 
   if (missingHeaders.includes('Content-Security-Policy')) {
-    recommendations.push('📋 Implement Content-Security-Policy to prevent XSS attacks');
+    recommendations.push(
+      '📋 Implement Content-Security-Policy to prevent XSS attacks'
+    );
   }
 
   if (missingHeaders.includes('X-Frame-Options')) {
-    recommendations.push('🛡️ Set X-Frame-Options to prevent clickjacking attacks');
+    recommendations.push(
+      '🛡️ Set X-Frame-Options to prevent clickjacking attacks'
+    );
   }
 
   if (leakageHeaders['Server'] === 'Exposed') {
-    recommendations.push('🔒 Hide Server header to prevent version enumeration');
+    recommendations.push(
+      '🔒 Hide Server header to prevent version enumeration'
+    );
   }
 
   if (leakageHeaders['X-Powered-By'] === 'Exposed') {
-    recommendations.push('🔒 Remove X-Powered-By header to reduce information disclosure');
+    recommendations.push(
+      '🔒 Remove X-Powered-By header to reduce information disclosure'
+    );
   }
 
   if (corsStatus.includes('*')) {
-    recommendations.push('⚠️ CORS misconfiguration: Avoid using wildcard (*) for Access-Control-Allow-Origin');
+    recommendations.push(
+      '⚠️ CORS misconfiguration: Avoid using wildcard (*) for Access-Control-Allow-Origin'
+    );
   }
 
   if (recommendations.length === 0) {
-    recommendations.push('✅ Good security practices detected. Continue monitoring.');
+    recommendations.push(
+      '✅ Good security practices detected. Continue monitoring.'
+    );
   }
 
   return recommendations;

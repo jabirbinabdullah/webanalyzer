@@ -22,6 +22,6 @@ export function generateFilename(baseUrl, prefix, extension) {
     return `${prefix}-${filenameHost}-${ts}.${extension}`;
   } catch (e) {
     console.warn('Could not parse URL for filename, using generic name.', e);
-    return `${prefix}-analysis-${new Date().toISOString().slice(0,10)}.${extension}`;
+    return `${prefix}-analysis-${new Date().toISOString().slice(0, 10)}.${extension}`;
   }
 }

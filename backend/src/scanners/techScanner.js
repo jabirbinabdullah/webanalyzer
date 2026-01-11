@@ -10,14 +10,25 @@ import { TECHNOLOGY_RULES, DETECTION_WEIGHTS } from './config/technologies.js';
  * @param {{ html: string, headers: Object, $?: CheerioAPI, detectedGlobals?: Object }} opts
  * @returns {Array} Array of detected technologies with confidence scores
  */
-export function detectTechnologies({ html, headers = {}, $ = null, detectedGlobals = {} }) {
+export function detectTechnologies({
+  html,
+  headers = {},
+  $ = null,
+  detectedGlobals = {},
+}) {
   try {
     if (!$) $ = load(html || '');
 
     const technologies = [];
     const htmlText = $.root().html() || '';
-    const scripts = $('script[src]').map((i, el) => $(el).attr('src')).get().join(' ');
-    const stylesheets = $('link[rel="stylesheet"]').map((i, el) => $(el).attr('href')).get().join(' ');
+    const scripts = $('script[src]')
+      .map((i, el) => $(el).attr('src'))
+      .get()
+      .join(' ');
+    const stylesheets = $('link[rel="stylesheet"]')
+      .map((i, el) => $(el).attr('href'))
+      .get()
+      .join(' ');
     const allText = htmlText + scripts + stylesheets;
 
     // Detect based on config rules
@@ -26,24 +37,34 @@ export function detectTechnologies({ html, headers = {}, $ = null, detectedGloba
       const evidences = [];
 
       // Check patterns
-      if (rules.patterns && Array.isArray(rules.patterns) && rules.patterns.some(p => p.test(allText))) {
+      if (
+        rules.patterns &&
+        Array.isArray(rules.patterns) &&
+        rules.patterns.some((p) => p.test(allText))
+      ) {
         confidence += DETECTION_WEIGHTS.pattern * rules.confidence;
         evidences.push('Script/CSS pattern detected');
       }
 
       // Check global variables
       if (rules.globalVars && Array.isArray(rules.globalVars)) {
-        if (rules.globalVars.some(v => {
-          const regex = new RegExp(`\\b${v}\\b`, 'i');
-          return regex.test(htmlText);
-        })) {
+        if (
+          rules.globalVars.some((v) => {
+            const regex = new RegExp(`\\b${v}\\b`, 'i');
+            return regex.test(htmlText);
+          })
+        ) {
           confidence += DETECTION_WEIGHTS.globalVar * rules.confidence;
           evidences.push('Global variable detected');
         }
       }
 
       // Check HTML indicators
-      if (rules.indicators && Array.isArray(rules.indicators) && rules.indicators.some(ind => ind.test(htmlText))) {
+      if (
+        rules.indicators &&
+        Array.isArray(rules.indicators) &&
+        rules.indicators.some((ind) => ind.test(htmlText))
+      ) {
         confidence += DETECTION_WEIGHTS.indicator * rules.confidence;
         evidences.push('HTML indicator detected');
       }

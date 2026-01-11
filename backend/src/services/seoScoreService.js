@@ -203,13 +203,13 @@ export class SEOScoreService {
   _scoreTitile(title) {
     if (!title) return 0;
     const len = title.length;
-    return (len >= 30 && len <= 60) ? 20 : (len >= 20 && len <= 70 ? 10 : 0);
+    return len >= 30 && len <= 60 ? 20 : len >= 20 && len <= 70 ? 10 : 0;
   }
 
   _scoreDescription(description) {
     if (!description) return 0;
     const len = description.length;
-    return (len >= 120 && len <= 160) ? 20 : (len >= 100 && len <= 180 ? 10 : 0);
+    return len >= 120 && len <= 160 ? 20 : len >= 100 && len <= 180 ? 10 : 0;
   }
 
   _scoreCanonical(canonical) {
@@ -224,7 +224,7 @@ export class SEOScoreService {
 
   _scoreContent(wordCount) {
     if (!wordCount) return 0;
-    return wordCount >= 300 ? 10 : (wordCount >= 150 ? 5 : 0);
+    return wordCount >= 300 ? 10 : wordCount >= 150 ? 5 : 0;
   }
 }
 

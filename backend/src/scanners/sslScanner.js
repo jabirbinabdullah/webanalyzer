@@ -8,10 +8,10 @@ import { URL } from 'url';
  */
 export const analyzeSSL = async (url) => {
   console.log(`Analyzing SSL/TLS for: ${url}`);
-  
+
   try {
     const urlObj = new URL(url);
-    
+
     if (urlObj.protocol !== 'https:') {
       return {
         status: 'not-https',
@@ -72,7 +72,7 @@ function analyzeCertificate(cert, hostname) {
   const now = new Date();
   const validFrom = new Date(cert.valid_from);
   const validTo = new Date(cert.valid_to);
-  
+
   // Validate dates
   if (isNaN(validFrom.getTime()) || isNaN(validTo.getTime())) {
     return {
@@ -82,7 +82,7 @@ function analyzeCertificate(cert, hostname) {
       score: 0,
     };
   }
-  
+
   const isExpired = now > validTo;
   const daysUntilExpiry = Math.floor((validTo - now) / (1000 * 60 * 60 * 24));
   const issuer = cert.issuer?.O || cert.issuer?.CN || 'Unknown';
@@ -92,11 +92,11 @@ function analyzeCertificate(cert, hostname) {
   if (cert.subjectaltname) {
     subjectAltNames = cert.subjectaltname
       .split(', ')
-      .map(san => san.replace('DNS:', '').trim());
+      .map((san) => san.replace('DNS:', '').trim());
   }
 
   // Verify hostname matches certificate
-  const hasValidSAN = subjectAltNames.some(san => 
+  const hasValidSAN = subjectAltNames.some((san) =>
     wildcardMatch(san, hostname)
   );
 
@@ -160,12 +160,10 @@ function analyzeCertificate(cert, hostname) {
  */
 function wildcardMatch(pattern, hostname) {
   if (!pattern || !hostname) return false;
-  
+
   // Convert wildcard pattern to regex
-  const regexPattern = pattern
-    .replace(/\./g, '\\.')
-    .replace(/\*/g, '[^.]+');
-  
+  const regexPattern = pattern.replace(/\./g, '\\.').replace(/\*/g, '[^.]+');
+
   const regex = new RegExp(`^${regexPattern}$`, 'i');
   return regex.test(hostname);
 }
@@ -192,7 +190,13 @@ function getKeyStrength(keySize, algorithm) {
  * @param {string} issuer - Certificate issuer
  * @returns {number} Score 0-100
  */
-function calculateSSLScore(isExpired, daysUntilExpiry, hostnameValid, strength, issuer) {
+function calculateSSLScore(
+  isExpired,
+  daysUntilExpiry,
+  hostnameValid,
+  strength,
+  issuer
+) {
   let score = 100;
 
   if (isExpired) score -= 50;
@@ -222,27 +226,45 @@ function calculateSSLScore(isExpired, daysUntilExpiry, hostnameValid, strength, 
  * @param {number} keySize - Key size
  * @returns {Array} Array of recommendations
  */
-function generateSSLRecommendations(isExpired, daysUntilExpiry, hostnameValid, strength, keySize) {
+function generateSSLRecommendations(
+  isExpired,
+  daysUntilExpiry,
+  hostnameValid,
+  strength,
+  keySize
+) {
   const recommendations = [];
 
   if (isExpired) {
-    recommendations.push('⚠️ CRITICAL: SSL certificate has expired. Renew immediately.');
+    recommendations.push(
+      '⚠️ CRITICAL: SSL certificate has expired. Renew immediately.'
+    );
   } else if (daysUntilExpiry < 7) {
-    recommendations.push(`⚠️ CRITICAL: SSL certificate expires in ${daysUntilExpiry} days. Renew immediately.`);
+    recommendations.push(
+      `⚠️ CRITICAL: SSL certificate expires in ${daysUntilExpiry} days. Renew immediately.`
+    );
   } else if (daysUntilExpiry < 30) {
-    recommendations.push(`⚠️ WARNING: SSL certificate expires in ${daysUntilExpiry} days. Plan renewal soon.`);
+    recommendations.push(
+      `⚠️ WARNING: SSL certificate expires in ${daysUntilExpiry} days. Plan renewal soon.`
+    );
   }
 
   if (!hostnameValid) {
-    recommendations.push('⚠️ WARNING: Certificate hostname does not match requested domain.');
+    recommendations.push(
+      '⚠️ WARNING: Certificate hostname does not match requested domain.'
+    );
   }
 
   if (keySize < 2048) {
-    recommendations.push('⚠️ WARNING: Use RSA 2048-bit or stronger encryption keys.');
+    recommendations.push(
+      '⚠️ WARNING: Use RSA 2048-bit or stronger encryption keys.'
+    );
   }
 
   if (!strength.includes('Good') && !strength.includes('Excellent')) {
-    recommendations.push(`📋 Consider upgrading to stronger encryption. Current: ${strength}`);
+    recommendations.push(
+      `📋 Consider upgrading to stronger encryption. Current: ${strength}`
+    );
   }
 
   if (recommendations.length === 0) {

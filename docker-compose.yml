@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # Database Service
+  mongo:
+    image: mongo:6
+    container_name: webanalyzer-mongo
+    ports:
+      - "27017:27017" # Expose to host for local debugging tools
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+    restart: always
+
+  # Redis Service (Queue)
+  redis:
+    image: redis:alpine
+    container_name: webanalyzer-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+    restart: always
+
+  # Backend API Service
+  backend-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: webanalyzer-api
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongo:27017/webanalyzer
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # You should override this with a real secret in production
+      - JWT_SECRET=docker-dev-secret-key-change-me
+      - SKIP_DB=false
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Backend Worker Service
+  backend-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: webanalyzer-worker
+    # Override command to run the worker script
+    # Note: npm start runs 'node dist/server.js', we need 'node dist/worker.js' or similar.
+    # In package.json, "worker": "nodemon run-worker.js". 
+    # But in Docker we are in production, using compiled code.
+    # We need to check what 'run-worker.js' does. It imports from src/worker.js.
+    # Since we compiled to dist/, we likely need a dist/run-worker.js equivalent or run dist/src/worker.js directly.
+    # Let's assume for a moment we can run the TS compiled version. 
+    # Wait, 'run-worker.js' is in root of backend, not src. tsc might not have compiled it if it wasn't included.
+    # Reviewing tsconfig.json: "include": ["./**/*.ts", "./**/*.js"] -> So it should be compiled to dist/run-worker.js
+    command: [ "node", "dist/run-worker.js" ]
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongo:27017/webanalyzer
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - mongo
+      - redis
+      - backend-api # logical dependency, though technically independent
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: webanalyzer-frontend
+    ports:
+      - "3000:80" # Map host 3000 to container 80
+    depends_on:
+      - backend-api
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+
+
+networks:
+  app-network:
+    driver: bridge
