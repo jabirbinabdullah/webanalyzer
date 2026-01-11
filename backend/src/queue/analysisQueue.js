@@ -1,15 +1,8 @@
 import { Queue, Worker } from 'bullmq';
 import { processAnalysisJob } from '../worker.js';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import redisConnection from '../config/redis.js';
 
 const queueName = 'analysis';
-
-const redisConnection = {
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  port: process.env.REDIS_PORT || 6379,
-};
 
 // Create a new BullMQ queue
 export const analysisQueue = new Queue(queueName, {
@@ -26,9 +19,13 @@ export const analysisQueue = new Queue(queueName, {
 // Create a worker to process jobs from the queue
 if (process.env.NODE_ENV !== 'test') {
   console.log('Starting BullMQ worker...');
-  const worker = new Worker(queueName, async (job) => {
-    await processAnalysisJob(job.data);
-  }, { connection: redisConnection });
+  const worker = new Worker(
+    queueName,
+    async (job) => {
+      await processAnalysisJob(job.data);
+    },
+    { connection: redisConnection }
+  );
 
   worker.on('completed', (job) => {
     console.log(`Job ${job.id} has completed!`);
