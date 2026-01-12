@@ -11,25 +11,25 @@ import axios from 'axios';
 jest.mock('axios');
 
 // Mock the worker module so we can call it directly
-jest.mock('../../src/worker.js', () => ({
+jest.mock('../worker', () => ({
   processAnalysisJob: jest.fn(),
 }));
 
 // Mock the auth middleware to bypass it
-jest.mock('../../src/middleware/flexibleAuth.js', () => ({
+jest.mock('../middleware/flexibleAuth', () => ({
   flexibleAuth: (req, res, next) => next(),
 }));
 
 // Mock the host validator to prevent DNS lookups during tests
-import { isHostAllowed } from '../../src/utils/hostValidator.js';
-jest.mock('../../src/utils/hostValidator.js', () => ({
-  ...jest.requireActual('../../src/utils/hostValidator.js'), // Keep other exports like validateUrl
+import { isHostAllowed } from '../utils/hostValidator';
+jest.mock('../utils/hostValidator', () => ({
+  ...jest.requireActual('../utils/hostValidator'), // Keep other exports like validateUrl
   isHostAllowed: jest.fn().mockResolvedValue(true), // Default to allowed
 }));
 
 // Mock the queue so we can check that jobs are added
-import analysisQueue from '../../src/queue/analysisQueue.js';
-jest.mock('../../src/queue/analysisQueue.js', () => ({
+import analysisQueue from '../queue/analysisQueue';
+jest.mock('../queue/analysisQueue', () => ({
   add: jest.fn(),
   getNext: jest.fn(),
   getQueue: jest.fn(),
@@ -37,7 +37,7 @@ jest.mock('../../src/queue/analysisQueue.js', () => ({
 
 // Mock the Analysis model to simulate an in-memory database
 const mockDb = {};
-jest.mock('../../src/models/Analysis.js', () => {
+jest.mock('../models/Analysis', () => {
   return class Analysis {
     constructor(data) {
       this._id = `id_${Date.now()}`;
@@ -138,7 +138,7 @@ jest.mock('lighthouse', () =>
 );
 
 // Mock the browserManager to use the mocked puppeteer
-jest.mock('../../src/utils/browserManager.js', () => ({
+jest.mock('../utils/browserManager', () => ({
   getBrowser: jest.fn().mockImplementation(() => {
     const puppeteer = require('puppeteer');
     return puppeteer.launch();
@@ -149,8 +149,8 @@ jest.mock('../../src/utils/browserManager.js', () => ({
 }));
 
 // Ensure server exports the app without listening when NODE_ENV === 'test'
-import app from '../../server.js';
-import Analysis from '../../src/models/Analysis.js';
+import app from '../../server';
+import Analysis from '../models/Analysis';
 
 describe('GET /api/analyze', () => {
   beforeEach(() => {
